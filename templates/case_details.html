@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+CyberTrace — Case Details
+{% endblock %}
+
+
+{% block content %}
+
+<section class="dashboard-section">
+
+    <!-- ==========================================
+         CASE HEADER
+    =========================================== -->
+
+    <div class="section-heading">
+
+        <div>
+
+            <span class="section-label">
+                INVESTIGATION
+            </span>
+
+            <h2>
+                {{ case.case_name }}
+            </h2>
+
+            <p class="case-description">
+                {{ case.description or "No investigation description provided." }}
+            </p>
+
+        </div>
+
+
+        <div class="case-header-meta">
+
+            <span class="case-id">
+                {{ case.case_id }}
+            </span>
+
+            <span class="case-status-large">
+                {{ case.status }}
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         CASE STATISTICS
+    =========================================== -->
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+
+            <span>
+                EVIDENCE FILES
+            </span>
+
+            <strong>
+                {{ evidence|length }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                EVENTS
+            </span>
+
+            <strong>
+                {{ events|length }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                ALERTS
+            </span>
+
+            <strong>
+                {{ alerts|length }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                RISK SCORE
+            </span>
+
+            <strong>
+                {{ case.risk_score }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         EVIDENCE UPLOAD
+    =========================================== -->
+
+    <div class="case-section">
+
+        <div class="section-heading">
+
+            <div>
+
+                <span class="section-label">
+                    EVIDENCE MANAGEMENT
+                </span>
+
+                <h2>
+                    Upload Evidence
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="upload-card">
+
+            <div class="upload-info">
+
+                <div class="upload-icon">
+                    +
+                </div>
+
+                <div>
+
+                    <h3>
+                        Add forensic evidence
+                    </h3>
+
+                    <p>
+                        Upload a CyberTrace evidence package
+                        containing CSV, LOG, JSON, or TXT files.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'upload_evidence',
+                    case_id=case.case_id
+                ) }}"
+                enctype="multipart/form-data"
+                class="upload-form"
+            >
+
+                <input
+                    type="file"
+                    name="evidence_file"
+                    id="evidence_file"
+                    accept=".zip"
+                    required
+                >
+
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    UPLOAD EVIDENCE
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         EVIDENCE LIST
+    =========================================== -->
+
+    <div class="case-section">
+
+        <div class="section-heading">
+
+            <div>
+
+                <span class="section-label">
+                    COLLECTED EVIDENCE
+                </span>
+
+                <h2>
+                    Evidence
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        {% if evidence %}
+
+            <div class="case-list">
+
+                {% for item in evidence %}
+
+                    <div class="case-row">
+
+                        <div class="case-number">
+                            {{ "%02d"|format(loop.index) }}
+                        </div>
+
+
+                        <div class="case-main">
+
+                            <span class="case-id">
+                                {{ item.evidence_id }}
+                            </span>
+
+                            <h3>
+                                {{ item.filename }}
+                            </h3>
+
+                        </div>
+
+
+                        <div class="case-status">
+
+                            <span class="status-dot"></span>
+
+                            {{ item.integrity_status }}
+
+                        </div>
+
+
+                        <div class="case-risk">
+
+                            <span>
+                                TYPE
+                            </span>
+
+                            <strong>
+                                {{ item.evidence_type }}
+                            </strong>
+
+                        </div>
+
+
+                        <div class="case-risk">
+
+                            <span>
+                                SIZE
+                            </span>
+
+                            <strong>
+                                {{ item.file_size }}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <span class="empty-number">
+                    00
+                </span>
+
+                <h3>
+                    No evidence uploaded.
+                </h3>
+
+                <p>
+                    Upload a forensic evidence package
+                    to begin the investigation.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ==========================================
+         EVENT TIMELINE
+    =========================================== -->
+
+    <div class="case-section">
+
+        <div class="section-heading">
+
+            <div>
+
+                <span class="section-label">
+                    FORENSIC TIMELINE
+                </span>
+
+                <h2>
+                    Events
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        {% if events %}
+
+            <div class="timeline">
+
+                {% for event in events %}
+
+                    <div class="timeline-item">
+
+                        <div class="timeline-time">
+
+                            {{ event.timestamp }}
+
+                        </div>
+
+
+                        <div class="timeline-content">
+
+                            <span class="event-type">
+                                {{ event.event_type }}
+                            </span>
+
+                            <h3>
+                                {{ event.description }}
+                            </h3>
+
+                            {% if event.username %}
+
+                                <p>
+                                    User:
+                                    {{ event.username }}
+                                </p>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <h3>
+                    No events yet.
+                </h3>
+
+                <p>
+                    Events will appear here after
+                    evidence is processed.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ==========================================
+         ALERTS
+    =========================================== -->
+
+    <div class="case-section">
+
+        <div class="section-heading">
+
+            <div>
+
+                <span class="section-label">
+                    DETECTION ENGINE
+                </span>
+
+                <h2>
+                    Alerts
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        {% if alerts %}
+
+            <div class="case-list">
+
+                {% for alert in alerts %}
+
+                    <div class="case-row">
+
+                        <div class="case-number">
+                            {{ "%02d"|format(loop.index) }}
+                        </div>
+
+
+                        <div class="case-main">
+
+                            <span class="case-id">
+                                ALERT
+                            </span>
+
+                            <h3>
+                                {{ alert.rule_name }}
+                            </h3>
+
+                        </div>
+
+
+                        <div class="case-status">
+
+                            {{ alert.severity }}
+
+                        </div>
+
+
+                        <div class="case-main">
+
+                            <span>
+                                {{ alert.description }}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <h3>
+                    No alerts detected.
+                </h3>
+
+                <p>
+                    Suspicious activity alerts will appear
+                    after the detection engine analyzes events.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

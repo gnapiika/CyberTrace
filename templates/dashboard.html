@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+CyberTrace — Digital Forensics
+{% endblock %}
+
+
+{% block content %}
+
+
+<!-- HERO -->
+
+<section class="hero">
+
+    <div class="hero-content">
+
+        <div class="hero-label">
+            DIGITAL FORENSICS • INCIDENT INVESTIGATION
+        </div>
+
+
+        <h1>
+            Reconstruct<br>
+            What Happened.
+        </h1>
+
+
+        <p class="hero-description">
+
+            CyberTrace analyzes digital evidence,
+            reconstructs chronological activity,
+            and helps investigators identify
+            suspicious behavior.
+
+        </p>
+
+
+        <div class="hero-actions">
+
+            <a
+                href="{{ url_for('create_case_page') }}"
+                class="primary-button"
+            >
+                START INVESTIGATION
+            </a>
+
+
+            <a
+                href="#cases"
+                class="text-button"
+            >
+                VIEW CASES →
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="hero-visual">
+
+        <div class="visual-circle"></div>
+
+        <div class="visual-line line-one"></div>
+        <div class="visual-line line-two"></div>
+        <div class="visual-line line-three"></div>
+
+        <div class="visual-card">
+
+            <div class="visual-card-top">
+                CYBERTRACE
+            </div>
+
+            <div class="visual-card-title">
+                FORENSIC ANALYSIS
+            </div>
+
+            <div class="visual-card-data">
+                <span>EVENTS</span>
+                <strong>{{ total_events }}</strong>
+            </div>
+
+            <div class="visual-card-data">
+                <span>ALERTS</span>
+                <strong>{{ total_alerts }}</strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- INFORMATION STRIP -->
+
+<section class="info-strip">
+
+    <div>
+
+        <span class="strip-number">
+            01
+        </span>
+
+        <strong>
+            COLLECT
+        </strong>
+
+        <p>
+            Upload forensic evidence
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <span class="strip-number">
+            02
+        </span>
+
+        <strong>
+            ANALYZE
+        </strong>
+
+        <p>
+            Parse and correlate events
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <span class="strip-number">
+            03
+        </span>
+
+        <strong>
+            RECONSTRUCT
+        </strong>
+
+        <p>
+            Build the investigation timeline
+        </p>
+
+    </div>
+
+
+    <div>
+
+        <span class="strip-number">
+            04
+        </span>
+
+        <strong>
+            REPORT
+        </strong>
+
+        <p>
+            Generate forensic findings
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- DASHBOARD -->
+
+<section
+    class="dashboard-section"
+    id="cases"
+>
+
+    <div class="section-heading">
+
+        <div>
+
+            <span class="section-label">
+                INVESTIGATION CENTER
+            </span>
+
+            <h2>
+                Active Cases
+            </h2>
+
+        </div>
+
+
+        <a
+            href="{{ url_for('create_case_page') }}"
+            class="outline-button"
+        >
+            + NEW CASE
+        </a>
+
+    </div>
+
+
+    <!-- STATS -->
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+
+            <span>
+                TOTAL CASES
+            </span>
+
+            <strong>
+                {{ cases|length }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                OPEN CASES
+            </span>
+
+            <strong>
+                {{ open_cases }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                EVENTS
+            </span>
+
+            <strong>
+                {{ total_events }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                ALERTS
+            </span>
+
+            <strong>
+                {{ total_alerts }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- CASE LIST -->
+
+    {% if cases %}
+
+        <div class="case-list">
+
+            {% for case in cases %}
+
+                <div class="case-row">
+
+                    <div class="case-number">
+
+                        {{ "%02d"|format(loop.index) }}
+
+                    </div>
+
+
+                    <div class="case-main">
+
+                        <span class="case-id">
+                            {{ case.case_id }}
+                        </span>
+
+                        <h3>
+                            {{ case.case_name }}
+                        </h3>
+
+                    </div>
+
+
+                    <div class="case-status">
+
+                        <span class="status-dot"></span>
+
+                        {{ case.status }}
+
+                    </div>
+
+
+                    <div class="case-risk">
+
+                        <span>
+                            RISK
+                        </span>
+
+                        <strong>
+                            {{ case.risk_score }}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <a
+                            href="{{ url_for(
+                                'case_details',
+                                case_id=case.case_id
+                            ) }}"
+                            class="open-link"
+                        >
+                            OPEN →
+                        </a>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <span class="empty-number">
+                00
+            </span>
+
+            <h3>
+                No investigations yet.
+            </h3>
+
+            <p>
+                Create your first forensic investigation
+                to begin analyzing evidence.
+            </p>
+
+            <a
+                href="{{ url_for('create_case_page') }}"
+                class="primary-button"
+            >
+                CREATE INVESTIGATION
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</section>
+
+
+<!-- ABOUT -->
+
+<section
+    class="about-section"
+    id="about"
+>
+
+    <div class="about-number">
+        01
+    </div>
+
+    <div>
+
+        <span class="section-label">
+            ABOUT CYBERTRACE
+        </span>
+
+        <h2>
+            From raw evidence<br>
+            to a coherent story.
+        </h2>
+
+    </div>
+
+
+    <p>
+
+        CyberTrace is a digital forensics investigation
+        platform designed to analyze multiple evidence
+        sources, correlate events, detect suspicious
+        activity, and reconstruct what happened during
+        an incident.
+
+    </p>
+
+</section>
+
+
+{% endblock %}

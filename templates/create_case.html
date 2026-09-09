@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+CyberTrace — New Investigation
+{% endblock %}
+
+
+{% block content %}
+
+<section class="dashboard-section">
+
+    <div class="section-heading">
+
+        <div>
+
+            <span class="section-label">
+                INVESTIGATION CENTER
+            </span>
+
+            <h2>
+                New Case
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <div class="case-form">
+
+        <form method="POST">
+
+            <div class="form-group">
+
+                <label for="case_name">
+                    CASE NAME
+                </label>
+
+                <input
+                    type="text"
+                    id="case_name"
+                    name="case_name"
+                    placeholder="Suspicious Workstation Activity"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="description">
+                    INVESTIGATION DESCRIPTION
+                </label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="7"
+                    placeholder="Describe the purpose of this investigation..."
+                ></textarea>
+
+            </div>
+
+
+            <div class="form-actions">
+
+                <a
+                    href="{{ url_for('dashboard') }}"
+                    class="outline-button"
+                >
+                    CANCEL
+                </a>
+
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    CREATE CASE
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</section>
+
+{% endblock %}

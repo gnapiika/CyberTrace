@@ -1,28 +1,66 @@
-# Python virtual environment
-venv/
+# ==========================================
+# Python
+# ==========================================
 
-# Python cache
+venv/
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Environment variables / secrets
+
+# ==========================================
+# Environment / Secrets
+# ==========================================
+
 .env
 .env.*
 
-# Uploaded evidence
-uploads/*
 
-# Generated reports
+# ==========================================
+# CyberTrace Local Evidence
+# ==========================================
+
+uploads/*
+sample_evidence/
+*.zip
+
+
+# ==========================================
+# Generated Reports
+# ==========================================
+
 reports/*
 
-# Database files
+
+# ==========================================
+# Local Database
+# ==========================================
+
 *.db
 *.sqlite
 *.sqlite3
 
-# IDE files
-.vscode/
 
-# OS files
+# ==========================================
+# IDE / Editor
+# ==========================================
+
+.vscode/
+.idea/
+
+
+# ==========================================
+# Operating System
+# ==========================================
+
 .DS_Store
 Thumbs.db
+
+
+# ==========================================
+# Python Test / Coverage
+# ==========================================
+
+.pytest_cache/
+.coverage
+htmlcov/
