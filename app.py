@@ -34,7 +34,17 @@ from core.evidence_manager import (
     get_case_evidence,
 )
 
-from utils.hash_utils import calculate_sha256
+from core.evidence_processor import (
+    process_evidence,
+)
+
+from utils.hash_utils import (
+    calculate_sha256,
+)
+
+from utils.evidence_utils import (
+    extract_evidence,
+)
 
 
 # ==========================================
@@ -60,7 +70,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = (
     SQLALCHEMY_TRACK_MODIFICATIONS
 )
 
-# Secret key for Flask flash messages
 app.secret_key = "cybertrace-development-key"
 
 
@@ -93,27 +102,22 @@ def home():
 @app.route("/dashboard")
 def dashboard():
 
-    # Get all investigation cases
     cases = get_all_cases()
 
-    # Count open cases
     open_cases = sum(
         1
         for case in cases
         if case.status == "Open"
     )
 
-    # Count closed cases
     closed_cases = sum(
         1
         for case in cases
         if case.status == "Closed"
     )
 
-    # Count all events
     total_events = Event.query.count()
 
-    # Count all alerts
     total_alerts = Alert.query.count()
 
     return render_template(
@@ -136,19 +140,11 @@ def dashboard():
 )
 def create_case_page():
 
-    # --------------------------------------
-    # SHOW CREATE CASE FORM
-    # --------------------------------------
-
     if request.method == "GET":
 
         return render_template(
             "create_case.html"
         )
-
-    # --------------------------------------
-    # GET FORM DATA
-    # --------------------------------------
 
     case_name = request.form.get(
         "case_name",
@@ -159,10 +155,6 @@ def create_case_page():
         "description",
         ""
     ).strip()
-
-    # --------------------------------------
-    # VALIDATE CASE NAME
-    # --------------------------------------
 
     if not case_name:
 
@@ -175,27 +167,15 @@ def create_case_page():
             url_for("create_case_page")
         )
 
-    # --------------------------------------
-    # CREATE DATABASE CASE
-    # --------------------------------------
-
     case = create_case(
         case_name=case_name,
         description=description,
     )
 
-    # --------------------------------------
-    # SUCCESS MESSAGE
-    # --------------------------------------
-
     flash(
         f"Case {case.case_id} created successfully.",
         "success"
     )
-
-    # --------------------------------------
-    # REDIRECT TO CASE DETAILS
-    # --------------------------------------
 
     return redirect(
         url_for(
@@ -214,15 +194,9 @@ def create_case_page():
 )
 def case_details(case_id):
 
-    # --------------------------------------
-    # FIND CASE
-    # --------------------------------------
-
-    case = get_case_by_id(case_id)
-
-    # --------------------------------------
-    # CASE NOT FOUND
-    # --------------------------------------
+    case = get_case_by_id(
+        case_id
+    )
 
     if case is None:
 
@@ -235,17 +209,9 @@ def case_details(case_id):
             url_for("dashboard")
         )
 
-    # --------------------------------------
-    # GET CASE EVIDENCE
-    # --------------------------------------
-
     evidence = get_case_evidence(
         case.id
     )
-
-    # --------------------------------------
-    # GET CASE EVENTS
-    # --------------------------------------
 
     events = Event.query.filter_by(
         case_id=case.id
@@ -253,21 +219,11 @@ def case_details(case_id):
         Event.timestamp.asc()
     ).all()
 
-    # --------------------------------------
-    # GET CASE ALERTS
-    # --------------------------------------
-
-    # Alert currently does not have a
-    # created_at field, so sort by ID.
     alerts = Alert.query.filter_by(
         case_id=case.id
     ).order_by(
         Alert.id.desc()
     ).all()
-
-    # --------------------------------------
-    # DISPLAY CASE DETAILS
-    # --------------------------------------
 
     return render_template(
         "case_details.html",
@@ -279,7 +235,57 @@ def case_details(case_id):
 
 
 # ==========================================
-# UPLOAD EVIDENCE
+# DETERMINE EVIDENCE TYPE
+# ==========================================
+
+def detect_evidence_type(
+    file_path
+):
+    """
+    Determine the evidence source from
+    the directory name inside the ZIP.
+
+    Example:
+
+        browser/history.csv
+        -> browser
+
+        authentication/auth.log
+        -> authentication
+    """
+
+    normalized_path = os.path.normpath(
+        file_path
+    )
+
+    parts = normalized_path.split(
+        os.sep
+    )
+
+    supported_types = {
+        "browser": "browser",
+        "authentication": "authentication",
+        "files": "file",
+        "usb": "usb",
+        "network": "network",
+        "processes": "process",
+    }
+
+    for part in parts:
+
+        folder_name = part.lower()
+
+        if folder_name in supported_types:
+
+            return supported_types[
+                folder_name
+            ]
+
+    return None
+
+
+# ==========================================
+# UPLOAD AND PROCESS EVIDENCE
 # ==========================================
 
 @app.route(
@@ -292,7 +298,9 @@ def upload_evidence(case_id):
     # FIND CASE
     # --------------------------------------
 
-    case = get_case_by_id(case_id)
+    case = get_case_by_id(
+        case_id
+    )
 
     if case is None:
 
@@ -306,16 +314,12 @@ def upload_evidence(case_id):
         )
 
     # --------------------------------------
-    # GET UPLOADED FILE
+    # GET FILE
     # --------------------------------------
 
     uploaded_file = request.files.get(
         "evidence_file"
     )
-
-    # --------------------------------------
-    # CHECK WHETHER FILE WAS PROVIDED
-    # --------------------------------------
 
     if uploaded_file is None:
 
@@ -346,7 +350,7 @@ def upload_evidence(case_id):
         )
 
     # --------------------------------------
-    # CHECK FILE TYPE
+    # CHECK ZIP FILE
     # --------------------------------------
 
     filename = uploaded_file.filename
@@ -366,7 +370,7 @@ def upload_evidence(case_id):
         )
 
     # --------------------------------------
-    # CREATE CASE UPLOAD DIRECTORY
+    # CREATE CASE DIRECTORY
     # --------------------------------------
 
     case_upload_folder = os.path.join(
@@ -380,16 +384,16 @@ def upload_evidence(case_id):
     )
 
     # --------------------------------------
-    # SAVE UPLOADED FILE
+    # SAVE ORIGINAL ZIP
     # --------------------------------------
 
-    file_path = os.path.join(
+    zip_path = os.path.join(
         case_upload_folder,
         filename
     )
 
     uploaded_file.save(
-        file_path
+        zip_path
     )
 
     # --------------------------------------
@@ -397,11 +401,11 @@ def upload_evidence(case_id):
     # --------------------------------------
 
     sha256_hash = calculate_sha256(
-        file_path
+        zip_path
     )
 
     # --------------------------------------
-    # CREATE EVIDENCE DATABASE RECORD
+    # CREATE EVIDENCE RECORD
     # --------------------------------------
 
     evidence = Evidence(
@@ -417,7 +421,7 @@ def upload_evidence(case_id):
         evidence_type="ZIP",
 
         file_size=os.path.getsize(
-            file_path
+            zip_path
         ),
 
         sha256_hash=sha256_hash,
@@ -432,13 +436,104 @@ def upload_evidence(case_id):
     db.session.commit()
 
     # --------------------------------------
-    # SUCCESS MESSAGE
+    # CREATE EXTRACTION DIRECTORY
     # --------------------------------------
 
-    flash(
-        "Evidence uploaded and SHA-256 integrity verified.",
-        "success"
+    extraction_folder = os.path.join(
+        case_upload_folder,
+        "extracted"
     )
+
+    try:
+
+        # ----------------------------------
+        # EXTRACT ZIP
+        # ----------------------------------
+
+        extracted_files = extract_evidence(
+            zip_path,
+            extraction_folder
+        )
+
+        # ----------------------------------
+        # PROCESS EACH EVIDENCE FILE
+        # ----------------------------------
+
+        processed_count = 0
+
+        skipped_count = 0
+
+        for extracted_file in extracted_files:
+
+            evidence_type = detect_evidence_type(
+                extracted_file
+            )
+
+            # Unknown source
+            if evidence_type is None:
+
+                skipped_count += 1
+
+                continue
+
+            try:
+
+                process_evidence(
+                    case_id=case.id,
+                    evidence_id=evidence.id,
+                    file_path=extracted_file,
+                    evidence_type=evidence_type,
+                )
+
+                processed_count += 1
+
+            except Exception as parser_error:
+
+                print(
+                    "Evidence parser error:",
+                    extracted_file,
+                    parser_error
+                )
+
+                skipped_count += 1
+
+        # ----------------------------------
+        # SUCCESS MESSAGE
+        # ----------------------------------
+
+        flash(
+            (
+                f"Evidence uploaded successfully. "
+                f"{processed_count} evidence source(s) "
+                f"processed and events stored."
+            ),
+            "success"
+        )
+
+        if skipped_count > 0:
+
+            flash(
+                (
+                    f"{skipped_count} evidence source(s) "
+                    f"were skipped or could not be processed."
+                ),
+                "error"
+            )
+
+    except Exception as extraction_error:
+
+        print(
+            "Evidence extraction error:",
+            extraction_error
+        )
+
+        flash(
+            (
+                "Evidence was uploaded and verified, "
+                "but extraction failed."
+            ),
+            "error"
+        )
 
     # --------------------------------------
     # RETURN TO CASE

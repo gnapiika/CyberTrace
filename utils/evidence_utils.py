@@ -11,11 +11,39 @@ ALLOWED_EXTENSIONS = {
 
 
 def extract_evidence(zip_path, destination):
-    os.makedirs(destination, exist_ok=True)
+    """
+    Safely extract supported forensic evidence files
+    from a ZIP archive.
+
+    The original directory structure inside the ZIP
+    is preserved so CyberTrace can identify the evidence
+    source from its folder.
+
+    Example:
+
+        browser/history.csv
+        authentication/auth.log
+        files/file_activity.csv
+
+    Unsupported file types are ignored.
+    ZIP path traversal is prevented.
+    """
+
+    os.makedirs(
+        destination,
+        exist_ok=True
+    )
 
     extracted_files = []
 
-    with zipfile.ZipFile(zip_path, "r") as archive:
+    destination_path = os.path.abspath(
+        destination
+    )
+
+    with zipfile.ZipFile(
+        zip_path,
+        "r"
+    ) as archive:
 
         for member in archive.infolist():
 
@@ -23,34 +51,82 @@ def extract_evidence(zip_path, destination):
             if member.is_dir():
                 continue
 
-            # Get only the filename, not the directory structure
-            filename = os.path.basename(member.filename)
+            # Get the extension
+            extension = os.path.splitext(
+                member.filename
+            )[1].lower()
 
-            if not filename:
-                continue
-
-            # Check file extension
-            extension = os.path.splitext(filename)[1].lower()
-
+            # Ignore unsupported files
             if extension not in ALLOWED_EXTENSIONS:
                 continue
 
-            # Build the destination path
-            target_path = os.path.abspath(
-                os.path.join(destination, filename)
+            # Normalize the ZIP path
+            member_name = os.path.normpath(
+                member.filename
             )
 
-            # Security check: prevent ZIP path traversal
-            destination_path = os.path.abspath(destination)
-
-            if not target_path.startswith(destination_path + os.sep):
+            # Prevent absolute paths
+            if os.path.isabs(member_name):
                 continue
 
-            # Extract the file
-            with archive.open(member) as source:
-                with open(target_path, "wb") as target:
-                    target.write(source.read())
+            # Prevent Windows drive paths
+            drive, _ = os.path.splitdrive(
+                member_name
+            )
 
-            extracted_files.append(target_path)
+            if drive:
+                continue
+
+            # Build destination path
+            target_path = os.path.abspath(
+                os.path.join(
+                    destination,
+                    member_name
+                )
+            )
+
+            # ZIP path traversal protection
+            if not (
+                target_path == destination_path
+                or target_path.startswith(
+                    destination_path + os.sep
+                )
+            ):
+                continue
+
+            # Create parent directory
+            parent_directory = os.path.dirname(
+                target_path
+            )
+
+            os.makedirs(
+                parent_directory,
+                exist_ok=True
+            )
+
+            # Extract file
+            with archive.open(member) as source:
+
+                with open(
+                    target_path,
+                    "wb"
+                ) as target:
+
+                    while True:
+
+                        chunk = source.read(
+                            8192
+                        )
+
+                        if not chunk:
+                            break
+
+                        target.write(
+                            chunk
+                        )
+
+            extracted_files.append(
+                target_path
+            )
 
     return extracted_files
