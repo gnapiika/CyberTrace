@@ -38,6 +38,21 @@ from core.evidence_processor import (
     process_evidence,
 )
 
+from core.detection_engine import (
+    detect_suspicious_activity,
+)
+
+from core.alert_manager import (
+    save_alerts,
+    delete_case_alerts,
+    get_case_alerts,
+)
+
+from core.risk_engine import (
+    calculate_risk_score,
+    get_risk_level,
+)
+
 from utils.hash_utils import (
     calculate_sha256,
 )
@@ -219,11 +234,13 @@ def case_details(case_id):
         Event.timestamp.asc()
     ).all()
 
-    alerts = Alert.query.filter_by(
-        case_id=case.id
-    ).order_by(
-        Alert.id.desc()
-    ).all()
+    alerts = get_case_alerts(
+        case.id
+    )
+
+    risk_level = get_risk_level(
+        case.risk_score or 0
+    )
 
     return render_template(
         "case_details.html",
@@ -231,6 +248,7 @@ def case_details(case_id):
         evidence=evidence,
         events=events,
         alerts=alerts,
+        risk_level=risk_level,
     )
 
 
@@ -282,6 +300,102 @@ def detect_evidence_type(
             ]
 
     return None
+
+
+# ==========================================
+# RUN ALERT DETECTION + RISK SCORING
+# ==========================================
+
+def analyze_case(
+    case
+):
+    """
+    Analyze all events belonging to a case.
+
+    Steps:
+
+        1. Retrieve all case events.
+        2. Run detection rules.
+        3. Remove previously generated alerts.
+        4. Save newly generated alerts.
+        5. Calculate risk score.
+        6. Update the case.
+
+    Detection is performed across the complete
+    investigation rather than only the latest
+    evidence file.
+    """
+
+    # --------------------------------------
+    # GET ALL CASE EVENTS
+    # --------------------------------------
+
+    events = Event.query.filter_by(
+        case_id=case.id
+    ).order_by(
+        Event.timestamp.asc()
+    ).all()
+
+    # --------------------------------------
+    # REMOVE OLD GENERATED ALERTS
+    # --------------------------------------
+
+    delete_case_alerts(
+        case.id
+    )
+
+    # --------------------------------------
+    # RUN DETECTION ENGINE
+    # --------------------------------------
+
+    alert_data = detect_suspicious_activity(
+        events
+    )
+
+    # --------------------------------------
+    # SAVE GENERATED ALERTS
+    # --------------------------------------
+
+    if alert_data:
+
+        save_alerts(
+            case_id=case.id,
+            alerts=alert_data,
+        )
+
+    # --------------------------------------
+    # GET SAVED ALERTS
+    # --------------------------------------
+
+    saved_alerts = get_case_alerts(
+        case.id
+    )
+
+    # --------------------------------------
+    # CALCULATE RISK SCORE
+    # --------------------------------------
+
+    risk_score = calculate_risk_score(
+        [
+            {
+                "severity": alert.severity
+            }
+            for alert in saved_alerts
+        ]
+    )
+
+    # --------------------------------------
+    # UPDATE CASE
+    # --------------------------------------
+
+    case.risk_score = risk_score
+
+    db.session.commit()
+
+    return (
+        saved_alerts,
+        risk_score,
+    )
 
 
 # ==========================================
@@ -498,6 +612,14 @@ def upload_evidence(case_id):
                 skipped_count += 1
 
         # ----------------------------------
+        # RUN ALERT DETECTION
+        # ----------------------------------
+
+        saved_alerts, risk_score = analyze_case(
+            case
+        )
+
+        # ----------------------------------
         # SUCCESS MESSAGE
         # ----------------------------------
 
@@ -509,6 +631,32 @@ def upload_evidence(case_id):
             ),
             "success"
         )
+
+        # ----------------------------------
+        # ALERT MESSAGE
+        # ----------------------------------
+
+        if saved_alerts:
+
+            flash(
+                (
+                    f"{len(saved_alerts)} suspicious "
+                    f"activity alert(s) detected. "
+                    f"Risk score: {risk_score}/100."
+                ),
+                "error"
+            )
+
+        else:
+
+            flash(
+                (
+                    f"No suspicious activity alerts "
+                    f"were detected. Risk score: "
+                    f"{risk_score}/100."
+                ),
+                "success"
+            )
 
         if skipped_count > 0:
 

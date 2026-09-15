@@ -93,15 +93,80 @@ CyberTrace — Case Details
         </div>
 
 
-        <div class="stat-card">
+        <div class="stat-card risk-stat-card">
 
             <span>
                 RISK SCORE
             </span>
 
             <strong>
-                {{ case.risk_score }}
+                {{ case.risk_score or 0 }}
             </strong>
+
+            <small class="risk-label">
+                {{ risk_level }}
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         RISK OVERVIEW
+    =========================================== -->
+
+    <div class="case-section">
+
+        <div class="section-heading">
+
+            <div>
+
+                <span class="section-label">
+                    INVESTIGATION RISK
+                </span>
+
+                <h2>
+                    Risk Assessment
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="risk-panel">
+
+            <div class="risk-score-large">
+
+                <span class="risk-score-number">
+                    {{ case.risk_score or 0 }}
+                </span>
+
+                <span class="risk-score-max">
+                    / 100
+                </span>
+
+            </div>
+
+
+            <div class="risk-panel-info">
+
+                <span class="section-label">
+                    CURRENT RISK LEVEL
+                </span>
+
+                <h3>
+                    {{ risk_level }}
+                </h3>
+
+                <p>
+                    The risk score is calculated from the
+                    severity of suspicious activity alerts
+                    detected during the investigation.
+                </p>
+
+            </div>
 
         </div>
 
@@ -333,9 +398,7 @@ CyberTrace — Case Details
                     <div class="timeline-item">
 
                         <div class="timeline-time">
-
                             {{ event.timestamp }}
-
                         </div>
 
 
@@ -411,42 +474,57 @@ CyberTrace — Case Details
 
         {% if alerts %}
 
-            <div class="case-list">
+            <div class="alert-list">
 
                 {% for alert in alerts %}
 
-                    <div class="case-row">
+                    <div class="alert-card">
 
-                        <div class="case-number">
-                            {{ "%02d"|format(loop.index) }}
-                        </div>
+                        <div class="alert-severity">
 
-
-                        <div class="case-main">
-
-                            <span class="case-id">
-                                ALERT
-                            </span>
-
-                            <h3>
-                                {{ alert.rule_name }}
-                            </h3>
-
-                        </div>
-
-
-                        <div class="case-status">
-
-                            {{ alert.severity }}
-
-                        </div>
-
-
-                        <div class="case-main">
+                            <span class="severity-dot"></span>
 
                             <span>
-                                {{ alert.description }}
+                                {{ alert.severity }}
                             </span>
+
+                        </div>
+
+
+                        <div class="alert-content">
+
+                            <div class="alert-header">
+
+                                <div>
+
+                                    <span class="alert-rule">
+                                        {{ alert.rule_id }}
+                                    </span>
+
+                                    <h3>
+                                        {{ alert.alert_name }}
+                                    </h3>
+
+                                </div>
+
+
+                                <span class="alert-time">
+                                    {{ alert.timestamp }}
+                                </span>
+
+                            </div>
+
+
+                            <p>
+                                {{ alert.description }}
+                            </p>
+
+
+                            <div class="alert-id">
+
+                                {{ alert.alert_id }}
+
+                            </div>
 
                         </div>
 

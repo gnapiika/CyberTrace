@@ -1417,3 +1417,307 @@ body {
     }
 
 }
+/* ==========================================
+   RISK ASSESSMENT
+========================================== */
+
+.risk-stat-card {
+    position: relative;
+}
+
+
+.risk-label {
+    font-size: 9px;
+
+    color: #777;
+
+    letter-spacing: 2px;
+
+    text-transform: uppercase;
+}
+
+
+.risk-panel {
+
+    background: white;
+
+    border: 1px solid #ddd;
+
+    min-height: 180px;
+
+    padding: 40px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 60px;
+}
+
+
+.risk-score-large {
+
+    display: flex;
+
+    align-items: baseline;
+
+    min-width: 220px;
+}
+
+
+.risk-score-number {
+
+    font-size: 80px;
+
+    line-height: 1;
+
+    font-weight: 200;
+
+    letter-spacing: -5px;
+}
+
+
+.risk-score-max {
+
+    color: #aaa;
+
+    font-size: 18px;
+
+    margin-left: 8px;
+}
+
+
+.risk-panel-info {
+
+    max-width: 500px;
+}
+
+
+.risk-panel-info h3 {
+
+    font-size: 28px;
+
+    font-weight: 300;
+
+    margin-bottom: 12px;
+}
+
+
+.risk-panel-info p {
+
+    color: #888;
+
+    font-size: 12px;
+
+    line-height: 1.8;
+}
+
+
+/* ==========================================
+   ALERTS
+========================================== */
+
+.alert-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 1px;
+
+    background: #ddd;
+
+    border: 1px solid #ddd;
+}
+
+
+.alert-card {
+
+    background: white;
+
+    min-height: 145px;
+
+    display: grid;
+
+    grid-template-columns: 130px 1fr;
+
+    gap: 30px;
+
+    padding: 30px;
+
+    transition: background 0.2s ease;
+}
+
+
+.alert-card:hover {
+
+    background: #f8f8f5;
+}
+
+
+.alert-severity {
+
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 10px;
+
+    padding-top: 3px;
+
+    font-size: 9px;
+
+    letter-spacing: 2px;
+
+    text-transform: uppercase;
+}
+
+
+.severity-dot {
+
+    width: 7px;
+
+    height: 7px;
+
+    border-radius: 50%;
+
+    background: #555;
+
+    margin-top: 1px;
+}
+
+
+.alert-content {
+
+    min-width: 0;
+}
+
+
+.alert-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 30px;
+
+    margin-bottom: 12px;
+}
+
+
+.alert-rule {
+
+    display: block;
+
+    color: #aaa;
+
+    font-size: 8px;
+
+    letter-spacing: 1.5px;
+
+    margin-bottom: 7px;
+}
+
+
+.alert-content h3 {
+
+    font-size: 18px;
+
+    font-weight: 400;
+}
+
+
+.alert-time {
+
+    color: #999;
+
+    font-size: 10px;
+
+    white-space: nowrap;
+}
+
+
+.alert-content p {
+
+    color: #777;
+
+    font-size: 12px;
+
+    line-height: 1.7;
+
+    max-width: 750px;
+
+    margin-bottom: 15px;
+}
+
+
+.alert-id {
+
+    color: #bbb;
+
+    font-size: 8px;
+
+    letter-spacing: 1.5px;
+}
+
+
+/* ==========================================
+   RISK RESPONSIVE
+========================================== */
+
+@media (max-width: 900px) {
+
+    .risk-panel {
+
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 30px;
+    }
+
+
+    .risk-score-large {
+
+        min-width: auto;
+    }
+
+
+    .alert-card {
+
+        grid-template-columns: 1fr;
+
+        gap: 15px;
+    }
+
+
+    .alert-header {
+
+        flex-direction: column;
+
+        gap: 10px;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .risk-score-number {
+
+        font-size: 65px;
+    }
+
+
+    .risk-panel {
+
+        padding: 25px;
+    }
+
+
+    .alert-card {
+
+        padding: 20px;
+    }
+
+}
