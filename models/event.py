@@ -2,83 +2,100 @@ from datetime import datetime
 
 from database.database import db
 
+# Import related models explicitly so SQLAlchemy can
+# correctly resolve the relationship when Event is
+# imported directly by tests or other modules.
+from models.case import Case
+from models.evidence import Evidence
+
 
 class Event(db.Model):
     __tablename__ = "events"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+    )
 
     event_id = db.Column(
         db.String(50),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     case_id = db.Column(
         db.Integer,
         db.ForeignKey("cases.id"),
-        nullable=False
+        nullable=False,
     )
 
     evidence_id = db.Column(
         db.Integer,
         db.ForeignKey("evidence.id"),
-        nullable=True
+        nullable=True,
     )
 
     event_type = db.Column(
         db.String(50),
-        nullable=False
+        nullable=False,
     )
 
     timestamp = db.Column(
         db.DateTime,
-        nullable=False
+        nullable=False,
     )
 
     username = db.Column(
         db.String(100),
-        nullable=True
+        nullable=True,
     )
 
     source_ip = db.Column(
         db.String(100),
-        nullable=True
+        nullable=True,
     )
 
     destination_ip = db.Column(
         db.String(100),
-        nullable=True
+        nullable=True,
     )
 
     description = db.Column(
         db.Text,
-        nullable=True
+        nullable=True,
     )
 
     severity = db.Column(
         db.String(30),
-        default="INFO"
+        default="INFO",
     )
 
     raw_data = db.Column(
         db.Text,
-        nullable=True
+        nullable=True,
     )
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=datetime.utcnow,
     )
 
+    # Explicit model references prevent SQLAlchemy from
+    # confusing Case with sqlalchemy.sql.elements.Case.
     case = db.relationship(
-        "Case",
-        backref=db.backref("events", lazy=True)
+        Case,
+        backref=db.backref(
+            "events",
+            lazy=True,
+        ),
     )
 
     evidence = db.relationship(
-        "Evidence",
-        backref=db.backref("events", lazy=True)
+        Evidence,
+        backref=db.backref(
+            "events",
+            lazy=True,
+        ),
     )
 
     def __repr__(self):

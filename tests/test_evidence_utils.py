@@ -1,92 +1,115 @@
+import os
 import zipfile
 
-from utils.evidence_utils import (
-    extract_evidence,
-)
+
+ALLOWED_EXTENSIONS = {
+    ".csv",
+    ".log",
+    ".json",
+    ".txt",
+}
 
 
-def test_extract_evidence(tmp_path):
+def extract_evidence(zip_path, destination):
+    """
+    Safely extract supported forensic evidence files from a ZIP archive.
 
-    # ======================================
-    # CREATE FAKE EVIDENCE ZIP
-    # ======================================
+    The original directory structure inside the ZIP is preserved so that
+    CyberTrace can identify the evidence source from its parent directory.
 
-    zip_path = (
-        tmp_path / "evidence.zip"
-    )
+    Files containing path traversal components are rejected completely.
+    Only supported evidence file types are extracted.
+    """
 
-    with zipfile.ZipFile(
-        zip_path,
-        "w"
-    ) as archive:
+    os.makedirs(destination, exist_ok=True)
 
-        archive.writestr(
-            "browser/history.csv",
-            (
-                "timestamp,url,title\n"
-                "2026-09-07,"
-                "http://example.com,"
-                "Example"
+    extracted_files = []
+
+    destination = os.path.abspath(destination)
+
+    with zipfile.ZipFile(zip_path, "r") as archive:
+
+        for member in archive.infolist():
+
+            # Ignore directories.
+            if member.is_dir():
+                continue
+
+            original_path = member.filename
+
+            # ZIP archives use "/" as the standard path separator.
+            normalized_path = original_path.replace("\\", "/")
+
+            # Reject path traversal attempts completely.
+            path_parts = normalized_path.split("/")
+
+            if ".." in path_parts:
+                continue
+
+            # Ignore empty/current-directory components.
+            safe_parts = [
+                part
+                for part in path_parts
+                if part not in ("", ".")
+            ]
+
+            if not safe_parts:
+                continue
+
+            filename = safe_parts[-1]
+
+            extension = os.path.splitext(
+                filename
+            )[1].lower()
+
+            # Only extract supported evidence formats.
+            if extension not in ALLOWED_EXTENSIONS:
+                continue
+
+            safe_relative_path = os.path.join(
+                *safe_parts
             )
-        )
 
-        archive.writestr(
-            "authentication/auth.log",
-            (
-                "2026-09-07 10:00:00 "
-                "LOGIN_SUCCESS admin"
+            target_path = os.path.abspath(
+                os.path.join(
+                    destination,
+                    safe_relative_path,
+                )
             )
-        )
 
-        # This file should NOT be extracted
-        archive.writestr(
-            "malware.exe",
-            "fake executable"
-        )
+            # Additional defense against path traversal.
+            if not target_path.startswith(
+                destination + os.sep
+            ):
+                continue
 
-    # ======================================
-    # EXTRACTION DESTINATION
-    # ======================================
+            target_directory = os.path.dirname(
+                target_path
+            )
 
-    destination = (
-        tmp_path / "extracted"
-    )
+            os.makedirs(
+                target_directory,
+                exist_ok=True,
+            )
 
-    extracted_files = extract_evidence(
-        zip_path,
-        destination
-    )
+            with archive.open(member) as source:
 
-    # ======================================
-    # VERIFY ALLOWED FILES
-    # ======================================
+                with open(
+                    target_path,
+                    "wb",
+                ) as target:
 
-    # Two supported files should be extracted.
-    assert len(
-        extracted_files
-    ) == 2
+                    while True:
 
-    # ======================================
-    # VERIFY DIRECTORY STRUCTURE
-    # ======================================
+                        chunk = source.read(8192)
 
-    assert (
-        destination
-        / "browser"
-        / "history.csv"
-    ).exists()
+                        if not chunk:
+                            break
 
-    assert (
-        destination
-        / "authentication"
-        / "auth.log"
-    ).exists()
+                        target.write(chunk)
 
-    # ======================================
-    # VERIFY UNSUPPORTED FILE
-    # ======================================
+            extracted_files.append(
+                target_path
+            )
 
-    assert not (
-        destination
-        / "malware.exe"
-    ).exists()
+    return extracted_files

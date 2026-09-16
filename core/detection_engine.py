@@ -75,11 +75,11 @@ def create_alert(
 
 def detect_brute_force(events):
     """
-    Detect multiple failed authentication attempts
-    followed by a successful login.
+    Detect five or more failed authentication
+    attempts followed by a successful login.
 
-    Current rule:
-    5 or more failures followed by success.
+    Only one alert is generated for each
+    successful login that completes the pattern.
     """
 
     alerts = []
@@ -98,11 +98,11 @@ def detect_brute_force(events):
         authentication_events
     ):
 
-        # Only successful logins can complete
-        # this detection pattern.
-        if "Successful login" not in (
+        description = (
             event.description or ""
-        ):
+        )
+
+        if "Successful login" not in description:
             continue
 
         previous_events = (
@@ -118,6 +118,7 @@ def detect_brute_force(events):
             )
             and previous.username == event.username
             and previous.source_ip == event.source_ip
+            and previous.timestamp <= event.timestamp
             and events_within_window(
                 previous,
                 event,
@@ -125,32 +126,37 @@ def detect_brute_force(events):
             )
         ]
 
-        if len(failed_events) >= 5:
+        if len(failed_events) < 5:
+            continue
 
-            related_events = (
-                failed_events[-5:]
-                + [event]
-            )
+        related_events = (
+            failed_events[-5:]
+            + [event]
+        )
 
-            alerts.append(
-                create_alert(
-                    rule_id="BRUTE_FORCE_SUCCESS",
-                    events=related_events,
-                )
+        alerts.append(
+            create_alert(
+                rule_id="BRUTE_FORCE_SUCCESS",
+                events=related_events,
             )
+        )
 
     return alerts
 
 
 # ==========================================
 # RULE 2
-# DOWNLOAD + FILE ACTIVITY
+# DOWNLOAD + FILE ACTIVITY + EXECUTION
 # ==========================================
 
 def detect_download_execution(events):
     """
-    Detect browser download activity followed by
-    suspicious file/process activity.
+    Detect suspicious browser download activity
+    followed by related file activity and,
+    where available, process execution.
+
+    Only the closest matching sequence is used
+    for each download event.
     """
 
     alerts = []
@@ -173,6 +179,18 @@ def detect_download_execution(events):
         if event.event_type == "process"
     ]
 
+    browser_events.sort(
+        key=lambda event: event.timestamp
+    )
+
+    file_events.sort(
+        key=lambda event: event.timestamp
+    )
+
+    process_events.sort(
+        key=lambda event: event.timestamp
+    )
+
     for browser_event in browser_events:
 
         description = (
@@ -185,12 +203,17 @@ def detect_download_execution(events):
         ):
             continue
 
-        # Look for file activity after download
+        # ----------------------------------
+        # Find the closest file activity
+        # after the download.
+        # ----------------------------------
+
+        matching_file = None
+
         for file_event in file_events:
 
-            if (
-                file_event.timestamp
-                < browser_event.timestamp
+            if file_event.timestamp < (
+                browser_event.timestamp
             ):
                 continue
 
@@ -201,72 +224,79 @@ def detect_download_execution(events):
             ):
                 continue
 
-            # Look for process execution after
-            # the downloaded file activity.
-            for process_event in process_events:
+            matching_file = file_event
+            break
 
-                if (
-                    process_event.timestamp
-                    < file_event.timestamp
-                ):
-                    continue
+        if matching_file is None:
+            continue
 
-                if not events_within_window(
-                    file_event,
-                    process_event,
-                    minutes=10,
-                ):
-                    continue
+        # ----------------------------------
+        # Find the closest process execution
+        # after the file activity.
+        # ----------------------------------
 
-                related_events = [
-                    browser_event,
-                    file_event,
-                    process_event,
-                ]
+        matching_process = None
 
-                alerts.append(
-                    create_alert(
-                        rule_id=(
-                            "SUSPICIOUS_DOWNLOAD_EXECUTION"
-                        ),
-                        events=related_events,
-                    )
-                )
+        for process_event in process_events:
 
-                break
+            if process_event.timestamp < (
+                matching_file.timestamp
+            ):
+                continue
 
-            else:
+            if not events_within_window(
+                matching_file,
+                process_event,
+                minutes=10,
+            ):
+                continue
 
-                # Download followed by file creation
-                # is still useful evidence.
-                related_events = [
-                    browser_event,
-                    file_event,
-                ]
+            matching_process = process_event
+            break
 
-                alerts.append(
-                    create_alert(
-                        rule_id=(
-                            "SUSPICIOUS_DOWNLOAD_EXECUTION"
-                        ),
-                        events=related_events,
-                    )
-                )
+        # ----------------------------------
+        # Prefer the complete sequence.
+        # ----------------------------------
+
+        if matching_process is not None:
+
+            related_events = [
+                browser_event,
+                matching_file,
+                matching_process,
+            ]
+
+        else:
+
+            related_events = [
+                browser_event,
+                matching_file,
+            ]
+
+        alerts.append(
+            create_alert(
+                rule_id=(
+                    "SUSPICIOUS_DOWNLOAD_EXECUTION"
+                ),
+                events=related_events,
+            )
+        )
 
     return alerts
 
 
 # ==========================================
 # RULE 3
-# SUSPICIOUS PROCESS CHAIN
+# SUSPICIOUS PROCESS
 # ==========================================
 
 def detect_process_chain(events):
     """
-    Detect potentially suspicious process chains.
+    Detect potentially suspicious process
+    execution.
 
-    This is intentionally heuristic.
-    It does NOT claim that a process is malicious.
+    This remains heuristic and does not claim
+    that the process is malicious.
     """
 
     alerts = []
@@ -304,14 +334,10 @@ def detect_process_chain(events):
         if not matched:
             continue
 
-        related_events = [
-            event
-        ]
-
         alerts.append(
             create_alert(
                 rule_id="SUSPICIOUS_PROCESS_CHAIN",
-                events=related_events,
+                events=[event],
                 explanation=(
                     "A potentially suspicious process "
                     "execution was detected. Further "
@@ -332,13 +358,16 @@ def detect_process_chain(events):
 
 def detect_usb_transfer(events):
     """
-    Detect:
+    Detect the sequence:
 
         USB connect
         ↓
-        file activity
+        file copy
         ↓
         USB disconnect
+
+    Only the first complete transfer sequence
+    for a connected device is reported.
     """
 
     alerts = []
@@ -353,80 +382,97 @@ def detect_usb_transfer(events):
         key=lambda event: event.timestamp
     )
 
-    for index, event in enumerate(
+    for index, connect_event in enumerate(
         usb_events
     ):
 
         description = (
-            event.description or ""
+            connect_event.description or ""
         ).lower()
 
         if "usb device connected" not in description:
             continue
 
-        device_id = getattr(
-            event,
-            "raw_data",
-            ""
-        )
+        # ----------------------------------
+        # Search for the first copy event.
+        # ----------------------------------
 
-        later_events = usb_events[
-            index + 1:
-        ]
+        copy_event = None
 
-        copy_events = [
-            later
-            for later in later_events
-            if "file copied" in (
+        for later in usb_events[index + 1:]:
+
+            later_description = (
                 later.description or ""
             ).lower()
-            and events_within_window(
-                event,
+
+            if "file copied" not in later_description:
+                continue
+
+            if later.timestamp < (
+                connect_event.timestamp
+            ):
+                continue
+
+            if not events_within_window(
+                connect_event,
                 later,
                 minutes=15,
-            )
-        ]
+            ):
+                continue
 
-        if not copy_events:
+            copy_event = later
+            break
+
+        if copy_event is None:
             continue
 
-        for copy_event in copy_events:
+        # ----------------------------------
+        # Find the first disconnect after
+        # the copy.
+        # ----------------------------------
 
-            disconnect_events = [
-                later
-                for later in later_events
-                if (
-                    "usb device disconnected"
-                    in (
-                        later.description
-                        or ""
-                    ).lower()
-                )
-                and later.timestamp
-                >= copy_event.timestamp
-                and events_within_window(
+        disconnect_event = None
+
+        for later in usb_events[index + 1:]:
+
+            later_description = (
+                later.description or ""
+            ).lower()
+
+            if (
+                "usb device disconnected"
+                not in later_description
+            ):
+                continue
+
+            if later.timestamp < (
+                copy_event.timestamp
+            ):
+                continue
+
+            if not events_within_window(
+                copy_event,
+                later,
+                minutes=15,
+            ):
+                continue
+
+            disconnect_event = later
+            break
+
+        if disconnect_event is None:
+            continue
+
+        alerts.append(
+            create_alert(
+                rule_id="USB_FILE_TRANSFER",
+                events=[
+                    connect_event,
                     copy_event,
-                    later,
-                    minutes=15,
-                )
-            ]
-
-            if disconnect_events:
-
-                related_events = [
-                    event,
-                    copy_event,
-                    disconnect_events[0],
-                ]
-
-                alerts.append(
-                    create_alert(
-                        rule_id="USB_FILE_TRANSFER",
-                        events=related_events,
-                    )
-                )
-
-                break
+                    disconnect_event,
+                ],
+            )
+        )
 
     return alerts
 
@@ -439,7 +485,11 @@ def detect_usb_transfer(events):
 def detect_network_activity(events):
     """
     Detect network activity occurring near
-    suspicious process or download activity.
+    suspicious process or browser activity.
+
+    One network alert is generated for each
+    network event, using the closest suspicious
+    event.
     """
 
     alerts = []
@@ -470,29 +520,48 @@ def detect_network_activity(events):
         )
     ]
 
+    network_events.sort(
+        key=lambda event: event.timestamp
+    )
+
+    suspicious_events.sort(
+        key=lambda event: event.timestamp
+    )
+
     for network_event in network_events:
 
-        for suspicious_event in suspicious_events:
-
+        matching_events = [
+            suspicious_event
+            for suspicious_event in suspicious_events
             if events_within_window(
                 network_event,
                 suspicious_event,
                 minutes=10,
-            ):
+            )
+        ]
 
-                alerts.append(
-                    create_alert(
-                        rule_id=(
-                            "SUSPICIOUS_NETWORK_ACTIVITY"
-                        ),
-                        events=[
-                            suspicious_event,
-                            network_event,
-                        ],
-                    )
-                )
+        if not matching_events:
+            continue
 
-                break
+        closest_event = min(
+            matching_events,
+            key=lambda event: abs(
+                event.timestamp
+                - network_event.timestamp
+            ),
+        )
+
+        alerts.append(
+            create_alert(
+                rule_id=(
+                    "SUSPICIOUS_NETWORK_ACTIVITY"
+                ),
+                events=[
+                    closest_event,
+                    network_event,
+                ],
+            )
+        )
 
     return alerts
 
@@ -504,8 +573,16 @@ def detect_network_activity(events):
 
 def detect_create_execute_delete(events):
     """
-    Detect a file that is created, executed/accessed,
-    and later deleted.
+    Detect:
+
+        File create
+        ↓
+        File execute/access
+        ↓
+        File delete
+
+    Only the first complete sequence for each
+    created file event is reported.
     """
 
     alerts = []
@@ -527,18 +604,14 @@ def detect_create_execute_delete(events):
         description = (
             event.description or ""
         ).lower()
-        
+
         if "file create" not in description:
             continue
-
-        remaining_events = file_events[
-            index + 1:
-        ]
 
         execute_event = None
         delete_event = None
 
-        for later in remaining_events:
+        for later in file_events[index + 1:]:
 
             later_description = (
                 later.description or ""
@@ -559,9 +632,7 @@ def detect_create_execute_delete(events):
 
                         execute_event = later
 
-            elif (
-                "delete" in later_description
-            ):
+            elif "delete" in later_description:
 
                 if events_within_window(
                     event,
@@ -570,24 +641,24 @@ def detect_create_execute_delete(events):
                 ):
 
                     delete_event = later
-
                     break
 
         if (
-            execute_event is not None
-            and delete_event is not None
+            execute_event is None
+            or delete_event is None
         ):
+            continue
 
-            alerts.append(
-                create_alert(
-                    rule_id="CREATE_EXECUTE_DELETE",
-                    events=[
-                        event,
-                        execute_event,
-                        delete_event,
-                    ],
-                )
+        alerts.append(
+            create_alert(
+                rule_id="CREATE_EXECUTE_DELETE",
+                events=[
+                    event,
+                    execute_event,
+                    delete_event,
+                ],
             )
+        )
 
     return alerts
 
@@ -602,16 +673,23 @@ def detect_multi_stage_activity(
     existing_alerts,
 ):
     """
-    Detect multiple suspicious stages within
-    the same investigation.
+    Detect multiple independent suspicious
+    patterns across the investigation.
 
-    This produces a CRITICAL alert only when
-    multiple independent suspicious patterns
-    have already been detected.
+    A CRITICAL alert is generated only when
+    at least two different detection rules
+    have fired.
     """
 
     if len(existing_alerts) < 2:
+        return []
 
+    unique_rule_ids = {
+        alert["rule_id"]
+        for alert in existing_alerts
+    }
+
+    if len(unique_rule_ids) < 2:
         return []
 
     alert_event_ids = set()
@@ -619,10 +697,7 @@ def detect_multi_stage_activity(
     for alert in existing_alerts:
 
         for event_id in alert["event_ids"]:
-
-            alert_event_ids.add(
-                event_id
-            )
+            alert_event_ids.add(event_id)
 
     related_events = [
         event
@@ -631,7 +706,6 @@ def detect_multi_stage_activity(
     ]
 
     if not related_events:
-
         return []
 
     return [
@@ -657,34 +731,62 @@ def detect_suspicious_activity(events):
     """
     Run all CyberTrace detection rules.
 
-    Returns a list of alert dictionaries.
+    Returns a list of unique alert dictionaries.
     """
 
     alerts = []
+
+    # --------------------------------------
+    # Authentication
+    # --------------------------------------
 
     alerts.extend(
         detect_brute_force(events)
     )
 
+    # --------------------------------------
+    # Browser / download activity
+    # --------------------------------------
+
     alerts.extend(
         detect_download_execution(events)
     )
+
+    # --------------------------------------
+    # Process activity
+    # --------------------------------------
 
     alerts.extend(
         detect_process_chain(events)
     )
 
+    # --------------------------------------
+    # USB activity
+    # --------------------------------------
+
     alerts.extend(
         detect_usb_transfer(events)
     )
+
+    # --------------------------------------
+    # Network activity
+    # --------------------------------------
 
     alerts.extend(
         detect_network_activity(events)
     )
 
+    # --------------------------------------
+    # File lifecycle activity
+    # --------------------------------------
+
     alerts.extend(
         detect_create_execute_delete(events)
     )
+
+    # --------------------------------------
+    # Multi-stage correlation
+    # --------------------------------------
 
     multi_stage_alerts = (
         detect_multi_stage_activity(
@@ -697,7 +799,10 @@ def detect_suspicious_activity(events):
         multi_stage_alerts
     )
 
-    # Remove duplicate alerts
+    # --------------------------------------
+    # Final deduplication
+    # --------------------------------------
+
     unique_alerts = []
 
     seen = set()
@@ -721,5 +826,13 @@ def detect_suspicious_activity(events):
         unique_alerts.append(
             alert
         )
+
+    # --------------------------------------
+    # Sort alerts chronologically
+    # --------------------------------------
+
+    unique_alerts.sort(
+        key=lambda alert: alert["timestamp"]
+    )
 
     return unique_alerts
