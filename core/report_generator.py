@@ -1,5 +1,7 @@
 import os
+
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -21,83 +23,106 @@ def generate_investigation_report(
     risk_score,
     risk_level,
     output_path,
+    correlations=None,
 ):
     """
     Generate a PDF investigation report for a CyberTrace case.
+
+    The report contains:
+    - Case information
+    - Risk assessment
+    - Evidence integrity
+    - Suspicious activity alerts
+    - Correlated activity
+    - Investigation timeline
+    - Investigation summary
+    - Conclusion
     """
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    if correlations is None:
+        correlations = []
+
+    output_directory = os.path.dirname(output_path)
+
+    if output_directory:
+        os.makedirs(
+            output_directory,
+            exist_ok=True,
+        )
 
     document = SimpleDocTemplate(
         output_path,
         pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
+        rightMargin=15 * mm,
+        leftMargin=15 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
     )
 
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle(
-        "ReportTitle",
+        "CyberTraceTitle",
         parent=styles["Title"],
-        fontName="Helvetica-Bold",
-        fontSize=22,
-        leading=26,
+        alignment=TA_CENTER,
+        fontSize=20,
         spaceAfter=8,
     )
 
     subtitle_style = ParagraphStyle(
-        "ReportSubtitle",
+        "CyberTraceSubtitle",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        alignment=TA_CENTER,
         fontSize=10,
         textColor=colors.grey,
         spaceAfter=18,
     )
 
     heading_style = ParagraphStyle(
-        "ReportHeading",
+        "CyberTraceHeading",
         parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
         fontSize=14,
-        leading=18,
-        spaceBefore=14,
-        spaceAfter=10,
+        spaceBefore=12,
+        spaceAfter=8,
     )
 
-    normal_style = ParagraphStyle(
-        "ReportNormal",
-        parent=styles["Normal"],
-        fontName="Helvetica",
+    body_style = ParagraphStyle(
+        "CyberTraceBody",
+        parent=styles["BodyText"],
         fontSize=9,
         leading=13,
         spaceAfter=6,
     )
 
     small_style = ParagraphStyle(
-        "ReportSmall",
-        parent=styles["Normal"],
-        fontName="Helvetica",
+        "CyberTraceSmall",
+        parent=styles["BodyText"],
         fontSize=7.5,
         leading=10,
+        spaceAfter=3,
     )
 
     alert_style = ParagraphStyle(
-        "AlertText",
-        parent=normal_style,
+        "CyberTraceAlert",
+        parent=styles["BodyText"],
         fontSize=8.5,
         leading=12,
+        spaceAfter=5,
     )
 
     story = []
 
-    # ==========================================================
+    # ---------------------------------------------------------
     # TITLE
-    # ==========================================================
+    # ---------------------------------------------------------
 
-    story.append(Paragraph("CyberTrace", title_style))
+    story.append(
+        Paragraph(
+            "CyberTrace",
+            title_style,
+        )
+    )
+
     story.append(
         Paragraph(
             "Digital Forensics Investigation Report",
@@ -105,20 +130,9 @@ def generate_investigation_report(
         )
     )
 
-    story.append(
-        Paragraph(
-            "Evidence-based analysis of digital activity. "
-            "Suspicious events identified by CyberTrace are "
-            "heuristic findings and require investigator validation.",
-            normal_style,
-        )
-    )
-
-    story.append(Spacer(1, 8))
-
-    # ==========================================================
+    # ---------------------------------------------------------
     # CASE INFORMATION
-    # ==========================================================
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
@@ -128,50 +142,92 @@ def generate_investigation_report(
     )
 
     case_data = [
-        ["Case ID", case.case_id],
-        ["Case Name", case.case_name],
-        ["Status", case.status or "Open"],
         [
-            "Created",
-            case.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            if case.created_at
-            else "N/A",
+            Paragraph("<b>Case ID</b>", body_style),
+            Paragraph(str(case.case_id), body_style),
         ],
         [
-            "Description",
-            case.description or "No description provided.",
+            Paragraph("<b>Case Name</b>", body_style),
+            Paragraph(str(case.case_name), body_style),
+        ],
+        [
+            Paragraph("<b>Status</b>", body_style),
+            Paragraph(str(case.status), body_style),
+        ],
+        [
+            Paragraph("<b>Created At</b>", body_style),
+            Paragraph(str(case.created_at), body_style),
+        ],
+        [
+            Paragraph("<b>Description</b>", body_style),
+            Paragraph(
+                str(case.description or "No description provided."),
+                body_style,
+            ),
         ],
     ]
 
     case_table = Table(
         case_data,
-        colWidths=[42 * mm, 125 * mm],
+        colWidths=[45 * mm, 130 * mm],
     )
 
     case_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#eeeeeb")),
-                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#555555")),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("LEADING", (0, 0), (-1, -1), 11),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dddddd")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.5,
+                    colors.grey,
+                ),
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "TOP",
+                ),
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, -1),
+                    colors.lightgrey,
+                ),
+                (
+                    "LEFTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    6,
+                ),
+                (
+                    "RIGHTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    6,
+                ),
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    5,
+                ),
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    5,
+                ),
             ]
         )
     )
 
     story.append(case_table)
+    story.append(Spacer(1, 8))
 
-    # ==========================================================
+    # ---------------------------------------------------------
     # RISK ASSESSMENT
-    # ==========================================================
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
@@ -181,30 +237,87 @@ def generate_investigation_report(
     )
 
     risk_data = [
-        ["Risk Score", f"{risk_score}/100"],
-        ["Risk Level", risk_level],
-        ["Total Events", str(len(events))],
-        ["Suspicious Alerts", str(len(alerts))],
+        [
+            Paragraph("<b>Risk Score</b>", body_style),
+            Paragraph(
+                f"{risk_score}/100",
+                body_style,
+            ),
+        ],
+        [
+            Paragraph("<b>Risk Level</b>", body_style),
+            Paragraph(
+                str(risk_level),
+                body_style,
+            ),
+        ],
+        [
+            Paragraph("<b>Total Alerts</b>", body_style),
+            Paragraph(
+                str(len(alerts)),
+                body_style,
+            ),
+        ],
+        [
+            Paragraph("<b>Correlated Activity Groups</b>", body_style),
+            Paragraph(
+                str(len(correlations)),
+                body_style,
+            ),
+        ],
     ]
 
     risk_table = Table(
         risk_data,
-        colWidths=[55 * mm, 112 * mm],
+        colWidths=[70 * mm, 105 * mm],
     )
 
     risk_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#eeeeeb")),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dddddd")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.5,
+                    colors.grey,
+                ),
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, -1),
+                    colors.lightgrey,
+                ),
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "TOP",
+                ),
+                (
+                    "LEFTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    6,
+                ),
+                (
+                    "RIGHTPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    6,
+                ),
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    5,
+                ),
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    5,
+                ),
             ]
         )
     )
@@ -212,21 +325,24 @@ def generate_investigation_report(
     story.append(risk_table)
 
     story.append(
-        Spacer(1, 8)
+        Spacer(1, 5)
     )
 
     story.append(
         Paragraph(
-            "Risk score interpretation: LOW (0–20), "
-            "MODERATE (21–40), MEDIUM (41–60), "
-            "HIGH (61–80), CRITICAL (81–100).",
-            small_style,
+            (
+                "Risk scores are heuristic indicators based on detected "
+                "activity and should be validated by a qualified investigator. "
+                "A suspicious event or alert does not by itself establish "
+                "that malicious activity occurred."
+            ),
+            body_style,
         )
     )
 
-    # ==========================================================
-    # EVIDENCE
-    # ==========================================================
+    # ---------------------------------------------------------
+    # EVIDENCE INTEGRITY
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
@@ -236,33 +352,50 @@ def generate_investigation_report(
     )
 
     if evidence:
+
         evidence_data = [
             [
-                "Evidence ID",
-                "Filename",
-                "Type",
-                "Size",
-                "Integrity",
+                Paragraph("<b>Evidence ID</b>", small_style),
+                Paragraph("<b>Filename</b>", small_style),
+                Paragraph("<b>Type</b>", small_style),
+                Paragraph("<b>Size</b>", small_style),
+                Paragraph("<b>Integrity</b>", small_style),
             ]
         ]
 
         for item in evidence:
+
             evidence_data.append(
                 [
-                    item.evidence_id,
-                    item.filename,
-                    item.evidence_type,
-                    f"{item.file_size} bytes",
-                    item.integrity_status,
+                    Paragraph(
+                        str(item.evidence_id),
+                        small_style,
+                    ),
+                    Paragraph(
+                        str(item.filename),
+                        small_style,
+                    ),
+                    Paragraph(
+                        str(item.evidence_type),
+                        small_style,
+                    ),
+                    Paragraph(
+                        f"{item.file_size} bytes",
+                        small_style,
+                    ),
+                    Paragraph(
+                        str(item.integrity_status),
+                        small_style,
+                    ),
                 ]
             )
 
         evidence_table = Table(
             evidence_data,
             colWidths=[
-                29 * mm,
-                43 * mm,
-                22 * mm,
+                32 * mm,
+                55 * mm,
+                25 * mm,
                 28 * mm,
                 35 * mm,
             ],
@@ -273,41 +406,17 @@ def generate_investigation_report(
             TableStyle(
                 [
                     (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#292929"),
-                    ),
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (-1, 0),
-                        colors.white,
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (-1, 0),
-                        "Helvetica-Bold",
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 1),
-                        (-1, -1),
-                        "Helvetica",
-                    ),
-                    (
-                        "FONTSIZE",
-                        (0, 0),
-                        (-1, -1),
-                        7,
-                    ),
-                    (
                         "GRID",
                         (0, 0),
                         (-1, -1),
                         0.4,
-                        colors.HexColor("#dddddd"),
+                        colors.grey,
+                    ),
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.lightgrey,
                     ),
                     (
                         "VALIGN",
@@ -319,53 +428,64 @@ def generate_investigation_report(
                         "LEFTPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                     (
                         "RIGHTPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                     (
                         "TOPPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        4,
                     ),
                     (
                         "BOTTOMPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        4,
                     ),
                 ]
             )
         )
 
         story.append(evidence_table)
-
         story.append(Spacer(1, 8))
 
-        for item in evidence:
-            story.append(
-                Paragraph(
-                    f"<b>{item.evidence_id}</b> — "
-                    f"SHA-256: {item.sha256_hash}",
-                    small_style,
-                )
-            )
-    else:
         story.append(
             Paragraph(
-                "No evidence has been associated with this case.",
-                normal_style,
+                "<b>SHA-256 Hashes</b>",
+                body_style,
             )
         )
 
-    # ==========================================================
-    # ALERTS
-    # ==========================================================
+        for item in evidence:
+
+            story.append(
+                Paragraph(
+                    (
+                        f"{item.filename}: "
+                        f"{item.sha256_hash}"
+                    ),
+                    small_style,
+                )
+            )
+
+    else:
+
+        story.append(
+            Paragraph(
+                "No evidence records were available.",
+                body_style,
+            )
+        )
+
+    # ---------------------------------------------------------
+    # SUSPICIOUS ACTIVITY ALERTS
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
@@ -375,76 +495,177 @@ def generate_investigation_report(
     )
 
     if alerts:
+
         for index, alert in enumerate(alerts, start=1):
-            timestamp = (
-                alert.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                if alert.timestamp
-                else "N/A"
-            )
 
             story.append(
                 Paragraph(
-                    f"<b>Alert {index}: {alert.alert_name}</b>",
+                    (
+                        f"<b>Alert {index}: "
+                        f"{alert.alert_name}</b>"
+                    ),
                     alert_style,
                 )
             )
 
             story.append(
                 Paragraph(
-                    f"Rule: {alert.rule_id}<br/>"
-                    f"Severity: {alert.severity}<br/>"
-                    f"Timestamp: {timestamp}<br/>"
-                    f"Description: {alert.description}",
+                    (
+                        f"<b>Alert ID:</b> "
+                        f"{alert.alert_id}<br/>"
+                        f"<b>Rule:</b> "
+                        f"{alert.rule_id}<br/>"
+                        f"<b>Severity:</b> "
+                        f"{alert.severity}<br/>"
+                        f"<b>Timestamp:</b> "
+                        f"{alert.timestamp}<br/>"
+                        f"<b>Description:</b> "
+                        f"{alert.description}"
+                    ),
                     alert_style,
                 )
             )
 
-            story.append(Spacer(1, 6))
+            story.append(
+                Spacer(1, 4)
+            )
+
     else:
+
         story.append(
             Paragraph(
                 "No suspicious activity alerts were detected.",
-                normal_style,
+                body_style,
             )
         )
 
-    # ==========================================================
-    # TIMELINE
-    # ==========================================================
+    # ---------------------------------------------------------
+    # CORRELATED ACTIVITY
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
-            "5. Investigation Timeline",
+            "5. Correlated Activity",
+            heading_style,
+        )
+    )
+
+    if correlations:
+
+        for index, correlation in enumerate(
+            correlations,
+            start=1,
+        ):
+
+            events_in_group = correlation.get(
+                "events",
+                [],
+            )
+
+            evidence_types = correlation.get(
+                "evidence_types",
+                [],
+            )
+
+            start_time = correlation.get(
+                "start_time"
+            )
+
+            end_time = correlation.get(
+                "end_time"
+            )
+
+            story.append(
+                Paragraph(
+                    (
+                        f"<b>Correlation Group "
+                        f"{index}</b>"
+                    ),
+                    body_style,
+                )
+            )
+
+            story.append(
+                Paragraph(
+                    (
+                        f"<b>Sources:</b> "
+                        f"{', '.join(evidence_types)}<br/>"
+                        f"<b>Start:</b> "
+                        f"{start_time}<br/>"
+                        f"<b>End:</b> "
+                        f"{end_time}<br/>"
+                        f"<b>Related Events:</b> "
+                        f"{len(events_in_group)}"
+                    ),
+                    small_style,
+                )
+            )
+
+            for event in events_in_group:
+
+                story.append(
+                    Paragraph(
+                        (
+                            f"{event.timestamp} — "
+                            f"<b>{event.event_type}</b> — "
+                            f"{event.description}"
+                        ),
+                        small_style,
+                    )
+                )
+
+            story.append(
+                Spacer(1, 6)
+            )
+
+    else:
+
+        story.append(
+            Paragraph(
+                "No cross-source event correlations were identified.",
+                body_style,
+            )
+        )
+
+    # ---------------------------------------------------------
+    # INVESTIGATION TIMELINE
+    # ---------------------------------------------------------
+
+    story.append(
+        PageBreak()
+    )
+
+    story.append(
+        Paragraph(
+            "6. Investigation Timeline",
             heading_style,
         )
     )
 
     if events:
+
         timeline_data = [
             [
-                "Timestamp",
-                "Type",
-                "Severity",
-                "Description",
+                Paragraph("<b>Timestamp</b>", small_style),
+                Paragraph("<b>Type</b>", small_style),
+                Paragraph("<b>Description</b>", small_style),
             ]
         ]
 
         for event in events:
-            timestamp = (
-                event.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                if event.timestamp
-                else "N/A"
-            )
-
-            description = event.description or ""
 
             timeline_data.append(
                 [
-                    timestamp,
-                    event.event_type,
-                    event.severity or "INFO",
                     Paragraph(
-                        description,
+                        str(event.timestamp),
+                        small_style,
+                    ),
+                    Paragraph(
+                        str(event.event_type),
+                        small_style,
+                    ),
+                    Paragraph(
+                        str(event.description or ""),
                         small_style,
                     ),
                 ]
@@ -453,10 +674,9 @@ def generate_investigation_report(
         timeline_table = Table(
             timeline_data,
             colWidths=[
-                35 * mm,
-                25 * mm,
-                25 * mm,
-                82 * mm,
+                42 * mm,
+                30 * mm,
+                78 * mm,
             ],
             repeatRows=1,
         )
@@ -465,41 +685,17 @@ def generate_investigation_report(
             TableStyle(
                 [
                     (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#292929"),
-                    ),
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (-1, 0),
-                        colors.white,
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (-1, 0),
-                        "Helvetica-Bold",
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 1),
-                        (-1, -1),
-                        "Helvetica",
-                    ),
-                    (
-                        "FONTSIZE",
-                        (0, 0),
-                        (-1, -1),
-                        7,
-                    ),
-                    (
                         "GRID",
                         (0, 0),
                         (-1, -1),
                         0.4,
-                        colors.HexColor("#dddddd"),
+                        colors.grey,
+                    ),
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.lightgrey,
                     ),
                     (
                         "VALIGN",
@@ -511,118 +707,194 @@ def generate_investigation_report(
                         "LEFTPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                     (
                         "RIGHTPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                     (
                         "TOPPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                     (
                         "BOTTOMPADDING",
                         (0, 0),
                         (-1, -1),
-                        5,
+                        4,
                     ),
                 ]
             )
         )
 
-        story.append(timeline_table)
+        story.append(
+            timeline_table
+        )
+
     else:
+
         story.append(
             Paragraph(
-                "No events are currently available for this case.",
-                normal_style,
+                "No events were available for the investigation timeline.",
+                body_style,
             )
         )
 
-    # ==========================================================
+    # ---------------------------------------------------------
     # INVESTIGATION SUMMARY
-    # ==========================================================
+    # ---------------------------------------------------------
 
     story.append(
         Paragraph(
-            "6. Investigation Summary",
+            "7. Investigation Summary",
             heading_style,
         )
+    )
+
+    if events:
+
+        first_event = events[0]
+        last_event = events[-1]
+
+        source_types = sorted(
+            {
+                event.event_type
+                for event in events
+                if event.event_type
+            }
+        )
+
+        summary_text = (
+            f"The investigation contains {len(events)} recorded events "
+            f"across {len(source_types)} evidence source type(s). "
+            f"The recorded activity begins at {first_event.timestamp} "
+            f"and ends at {last_event.timestamp}. "
+        )
+
+        if source_types:
+
+            summary_text += (
+                "Evidence sources represented in the timeline include: "
+                f"{', '.join(source_types)}. "
+            )
+
+        if alerts:
+
+            summary_text += (
+                f"The detection engine identified {len(alerts)} "
+                "suspicious activity alert(s). "
+            )
+
+        else:
+
+            summary_text += (
+                "The detection engine did not identify any suspicious "
+                "activity alerts. "
+            )
+
+        if correlations:
+
+            summary_text += (
+                f"{len(correlations)} cross-source correlation group(s) "
+                "were identified for further investigation."
+            )
+
+        else:
+
+            summary_text += (
+                "No cross-source correlation groups were identified."
+            )
+
+        story.append(
+            Paragraph(
+                summary_text,
+                body_style,
+            )
+        )
+
+    else:
+
+        story.append(
+            Paragraph(
+                "There were no recorded events available for analysis.",
+                body_style,
+            )
+        )
+
+    # ---------------------------------------------------------
+    # CONCLUSION
+    # ---------------------------------------------------------
+
+    story.append(
+        Paragraph(
+            "8. Conclusion",
+            heading_style,
+        )
+    )
+
+    conclusion_text = (
+        "CyberTrace reconstructed the available forensic evidence into "
+        "a chronological investigation timeline and applied deterministic "
+        "detection and correlation rules. "
     )
 
     if alerts:
-        summary_text = (
-            f"CyberTrace processed {len(events)} event(s) associated with "
-            f"case {case.case_id}. The analysis identified {len(alerts)} "
-            f"suspicious activity alert(s). The resulting heuristic risk "
-            f"score is {risk_score}/100, categorized as {risk_level}. "
-            "These findings represent automated indicators and should "
-            "be reviewed by an investigator together with the underlying "
-            "evidence."
+
+        conclusion_text += (
+            f"The analysis produced {len(alerts)} suspicious activity "
+            "alert(s), with a calculated heuristic risk score of "
+            f"{risk_score}/100 ({risk_level}). "
         )
+
     else:
-        summary_text = (
-            f"CyberTrace processed {len(events)} event(s) associated with "
-            f"case {case.case_id}. No suspicious activity alerts were "
-            "generated by the configured detection rules. This does not "
-            "establish that no malicious activity occurred; it only "
-            "indicates that the implemented detection rules did not "
-            "identify a matching suspicious pattern."
+
+        conclusion_text += (
+            "No suspicious activity alerts were produced by the current "
+            "detection rules. "
         )
 
-    story.append(
-        Paragraph(
-            summary_text,
-            normal_style,
-        )
-    )
-
-    # ==========================================================
-    # CONCLUSION
-    # ==========================================================
-
-    story.append(
-        Paragraph(
-            "7. Conclusion",
-            heading_style,
-        )
+    conclusion_text += (
+        "The findings should be treated as investigative indicators rather "
+        "than definitive proof of malicious activity. Further validation "
+        "using the original evidence and appropriate forensic procedures "
+        "is recommended."
     )
 
     story.append(
         Paragraph(
-            "This report documents the results produced by the CyberTrace "
-            "digital forensics analysis pipeline. The platform preserves "
-            "the original uploaded evidence, calculates SHA-256 integrity "
-            "hashes, parses supported evidence sources, normalizes events, "
-            "constructs a chronological timeline, and applies rule-based "
-            "detection logic.",
-            normal_style,
+            conclusion_text,
+            body_style,
         )
+    )
+
+    # ---------------------------------------------------------
+    # FOOTER / DISCLAIMER
+    # ---------------------------------------------------------
+
+    story.append(
+        Spacer(1, 15)
     )
 
     story.append(
         Paragraph(
-            "Automated alerts are indicators for further investigation "
-            "and should not be treated as definitive proof of malicious "
-            "activity. Investigators should validate findings against "
-            "the original evidence and relevant forensic procedures.",
-            normal_style,
-        )
-    )
-
-    story.append(Spacer(1, 20))
-
-    story.append(
-        Paragraph(
-            "Generated by CyberTrace Digital Forensics Investigation Platform",
+            (
+                "<b>CyberTrace Investigation Report</b><br/>"
+                "Generated automatically from the evidence available "
+                "within the selected case.<br/>"
+                "CyberTrace analyzes evidence and does not execute files "
+                "contained within evidence packages."
+            ),
             small_style,
         )
     )
+
+    # ---------------------------------------------------------
+    # BUILD PDF
+    # ---------------------------------------------------------
 
     document.build(story)
 

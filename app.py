@@ -54,6 +54,10 @@ from core.risk_engine import (
     get_risk_level,
 )
 
+from core.correlation_engine import (
+    correlate_events,
+)
+
 from core.report_generator import (
     generate_investigation_report,
 )
@@ -72,28 +76,23 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["REPORT_FOLDER"] = REPORT_FOLDER
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = SQLALCHEMY_TRACK_MODIFICATIONS
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = (
+    SQLALCHEMY_TRACK_MODIFICATIONS
+)
 
 app.secret_key = "cybertrace-development-key"
 
 db.init_app(app)
 
+
 with app.app_context():
     db.create_all()
 
-
-# ==========================================================
-# HOME
-# ==========================================================
 
 @app.route("/")
 def home():
     return redirect(url_for("dashboard"))
 
-
-# ==========================================================
-# DASHBOARD
-# ==========================================================
 
 @app.route("/dashboard")
 def dashboard():
@@ -122,10 +121,6 @@ def dashboard():
     )
 
 
-# ==========================================================
-# CREATE CASE
-# ==========================================================
-
 @app.route("/cases/create", methods=["GET", "POST"])
 def create_case_page():
 
@@ -145,7 +140,7 @@ def create_case_page():
     if not case_name:
         flash(
             "Case name is required.",
-            "error",
+            "error"
         )
 
         return redirect(
@@ -159,20 +154,16 @@ def create_case_page():
 
     flash(
         f"Case {case.case_id} created successfully.",
-        "success",
+        "success"
     )
 
     return redirect(
         url_for(
             "case_details",
-            case_id=case.case_id,
+            case_id=case.case_id
         )
     )
 
-
-# ==========================================================
-# CASE DETAILS
-# ==========================================================
 
 @app.route("/cases/<case_id>")
 def case_details(case_id):
@@ -182,7 +173,7 @@ def case_details(case_id):
     if case is None:
         flash(
             "Case not found.",
-            "error",
+            "error"
         )
 
         return redirect(
@@ -200,6 +191,8 @@ def case_details(case_id):
 
     alerts = get_case_alerts(case.id)
 
+    correlations = correlate_events(events)
+
     risk_level = get_risk_level(
         case.risk_score or 0
     )
@@ -210,13 +203,10 @@ def case_details(case_id):
         evidence=evidence,
         events=events,
         alerts=alerts,
+        correlations=correlations,
         risk_level=risk_level,
     )
 
-
-# ==========================================================
-# EVIDENCE TYPE DETECTION
-# ==========================================================
 
 def detect_evidence_type(file_path):
 
@@ -249,10 +239,6 @@ def detect_evidence_type(file_path):
     return None
 
 
-# ==========================================================
-# ANALYZE CASE
-# ==========================================================
-
 def analyze_case(case):
 
     events = (
@@ -262,19 +248,22 @@ def analyze_case(case):
         .all()
     )
 
-    delete_case_alerts(
-        case.id
-    )
+    delete_case_alerts(case.id)
 
     alert_data = detect_suspicious_activity(
         events
     )
 
     if alert_data:
+
         save_alerts(
             case_id=case.id,
             alerts=alert_data,
         )
+
+    correlations = correlate_events(
+        events
+    )
 
     saved_alerts = get_case_alerts(
         case.id
@@ -296,28 +285,23 @@ def analyze_case(case):
     return (
         saved_alerts,
         risk_score,
+        correlations,
     )
 
-
-# ==========================================================
-# UPLOAD EVIDENCE
-# ==========================================================
 
 @app.route(
     "/cases/<case_id>/upload",
-    methods=["POST"],
+    methods=["POST"]
 )
 def upload_evidence(case_id):
 
-    case = get_case_by_id(
-        case_id
-    )
+    case = get_case_by_id(case_id)
 
     if case is None:
 
         flash(
             "Case not found.",
-            "error",
+            "error"
         )
 
         return redirect(
@@ -332,13 +316,13 @@ def upload_evidence(case_id):
 
         flash(
             "No evidence file was selected.",
-            "error",
+            "error"
         )
 
         return redirect(
             url_for(
                 "case_details",
-                case_id=case.case_id,
+                case_id=case.case_id
             )
         )
 
@@ -346,13 +330,13 @@ def upload_evidence(case_id):
 
         flash(
             "No evidence file was selected.",
-            "error",
+            "error"
         )
 
         return redirect(
             url_for(
                 "case_details",
-                case_id=case.case_id,
+                case_id=case.case_id
             )
         )
 
@@ -362,13 +346,13 @@ def upload_evidence(case_id):
 
         flash(
             "Only ZIP evidence packages are supported.",
-            "error",
+            "error"
         )
 
         return redirect(
             url_for(
                 "case_details",
-                case_id=case.case_id,
+                case_id=case.case_id
             )
         )
 
@@ -387,9 +371,7 @@ def upload_evidence(case_id):
         filename,
     )
 
-    uploaded_file.save(
-        zip_path
-    )
+    uploaded_file.save(zip_path)
 
     sha256_hash = calculate_sha256(
         zip_path
@@ -409,9 +391,7 @@ def upload_evidence(case_id):
         integrity_status="Verified",
     )
 
-    db.session.add(
-        evidence
-    )
+    db.session.add(evidence)
 
     db.session.commit()
 
@@ -462,9 +442,11 @@ def upload_evidence(case_id):
 
                 skipped_count += 1
 
-        saved_alerts, risk_score = analyze_case(
-            case
-        )
+        (
+            saved_alerts,
+            risk_score,
+            correlations,
+        ) = analyze_case(case)
 
         flash(
             (
@@ -479,9 +461,9 @@ def upload_evidence(case_id):
 
             flash(
                 (
-                    f"{len(saved_alerts)} suspicious activity "
-                    f"alert(s) detected. Risk score: "
-                    f"{risk_score}/100."
+                    f"{len(saved_alerts)} suspicious "
+                    "activity alert(s) detected. "
+                    f"Risk score: {risk_score}/100."
                 ),
                 "error",
             )
@@ -490,8 +472,19 @@ def upload_evidence(case_id):
 
             flash(
                 (
-                    "No suspicious activity alerts were detected. "
+                    "No suspicious activity alerts "
+                    "were detected. "
                     f"Risk score: {risk_score}/100."
+                ),
+                "success",
+            )
+
+        if correlations:
+
+            flash(
+                (
+                    f"{len(correlations)} correlated "
+                    "activity group(s) identified."
                 ),
                 "success",
             )
@@ -524,29 +517,23 @@ def upload_evidence(case_id):
     return redirect(
         url_for(
             "case_details",
-            case_id=case.case_id,
+            case_id=case.case_id
         )
     )
 
-
-# ==========================================================
-# GENERATE INVESTIGATION REPORT
-# ==========================================================
 
 @app.route(
     "/cases/<case_id>/report"
 )
 def generate_report(case_id):
 
-    case = get_case_by_id(
-        case_id
-    )
+    case = get_case_by_id(case_id)
 
     if case is None:
 
         flash(
             "Case not found.",
-            "error",
+            "error"
         )
 
         return redirect(
@@ -566,6 +553,10 @@ def generate_report(case_id):
 
     alerts = get_case_alerts(
         case.id
+    )
+
+    correlations = correlate_events(
+        events
     )
 
     risk_score = case.risk_score or 0
@@ -593,11 +584,12 @@ def generate_report(case_id):
             risk_score=risk_score,
             risk_level=risk_level,
             output_path=report_path,
+            correlations=correlations,
         )
 
         flash(
             "Investigation report generated successfully.",
-            "success",
+            "success"
         )
 
         return send_file(
@@ -616,20 +608,16 @@ def generate_report(case_id):
 
         flash(
             "Failed to generate the investigation report.",
-            "error",
+            "error"
         )
 
         return redirect(
             url_for(
                 "case_details",
-                case_id=case.case_id,
+                case_id=case.case_id
             )
         )
 
-
-# ==========================================================
-# RUN APPLICATION
-# ==========================================================
 
 if __name__ == "__main__":
     app.run(

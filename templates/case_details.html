@@ -1,48 +1,51 @@
 {% extends "base.html" %}
 
 {% block title %}
-    {{ case.case_name }} — CyberTrace
+{{ case.case_name }} - CyberTrace
 {% endblock %}
 
 {% block content %}
 
 <section class="dashboard-section">
 
-    <!-- =====================================================
+    <!-- ==========================================
          CASE HEADER
-    ====================================================== -->
+    =========================================== -->
 
     <div class="section-heading">
 
         <div>
 
             <span class="section-label">
-                CASE {{ case.case_id }}
+                DIGITAL FORENSICS CASE
             </span>
 
             <h2>
                 {{ case.case_name }}
             </h2>
 
-            {% if case.description %}
-                <p class="case-description">
+            <p class="case-description">
+                Case ID: {{ case.case_id }}
+
+                {% if case.description %}
+                    <br>
                     {{ case.description }}
-                </p>
-            {% endif %}
+                {% endif %}
+            </p>
 
         </div>
 
         <div class="case-header-meta">
 
             <span class="case-status-large">
-                STATUS — {{ case.status }}
+                STATUS: {{ case.status }}
             </span>
 
             <a
-                href="{{ url_for('generate_report', case_id=case.case_id) }}"
+                href="{{ url_for('dashboard') }}"
                 class="outline-button"
             >
-                GENERATE INVESTIGATION REPORT
+                ← DASHBOARD
             </a>
 
         </div>
@@ -50,9 +53,34 @@
     </div>
 
 
-    <!-- =====================================================
-         CASE STATISTICS
-    ====================================================== -->
+    <!-- ==========================================
+         FLASH MESSAGES
+    =========================================== -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+
+        {% if messages %}
+
+            <div class="flash-container">
+
+                {% for category, message in messages %}
+
+                    <div class="flash {{ category }}">
+                        {{ message }}
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% endif %}
+
+    {% endwith %}
+
+
+    <!-- ==========================================
+         STATISTICS
+    =========================================== -->
 
     <div class="stats-grid">
 
@@ -68,6 +96,7 @@
 
         </div>
 
+
         <div class="stat-card">
 
             <span>
@@ -79,6 +108,20 @@
             </strong>
 
         </div>
+
+
+        <div class="stat-card">
+
+            <span>
+                ALERTS
+            </span>
+
+            <strong>
+                {{ alerts|length }}
+            </strong>
+
+        </div>
+
 
         <div class="stat-card risk-stat-card">
 
@@ -96,42 +139,31 @@
 
         </div>
 
-        <div class="stat-card">
-
-            <span>
-                ALERTS
-            </span>
-
-            <strong>
-                {{ alerts|length }}
-            </strong>
-
-        </div>
-
     </div>
 
 
-    <!-- =====================================================
-         EVIDENCE UPLOAD
-    ====================================================== -->
+    <!-- ==========================================
+         EVIDENCE MANAGEMENT
+    =========================================== -->
 
-    <section class="case-section">
+    <div class="case-section">
+
+        <span class="section-label">
+            EVIDENCE MANAGEMENT
+        </span>
 
         <div class="section-heading">
 
             <div>
 
-                <span class="section-label">
-                    01 / EVIDENCE
-                </span>
-
                 <h2>
-                    Evidence Management
+                    Upload Evidence
                 </h2>
 
             </div>
 
         </div>
+
 
         <div class="upload-card">
 
@@ -144,24 +176,24 @@
                 <div>
 
                     <h3>
-                        Upload Evidence Package
+                        Evidence ZIP Package
                     </h3>
 
                     <p>
-                        Upload a ZIP package containing supported
-                        forensic evidence such as authentication,
-                        browser, file, USB, network, and process logs.
+                        Upload a ZIP package containing
+                        CSV, LOG, JSON, or TXT forensic evidence.
                     </p>
 
                 </div>
 
             </div>
 
+
             <form
-                class="upload-form"
-                action="{{ url_for('upload_evidence', case_id=case.case_id) }}"
                 method="POST"
+                action="{{ url_for('upload_evidence', case_id=case.case_id) }}"
                 enctype="multipart/form-data"
+                class="upload-form"
             >
 
                 <input
@@ -182,117 +214,165 @@
 
         </div>
 
+    </div>
+
+
+    <!-- ==========================================
+         EVIDENCE LIST
+    =========================================== -->
+
+    <div class="case-section">
+
+        <span class="section-label">
+            COLLECTED DATA
+        </span>
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    Evidence
+                </h2>
+
+            </div>
+
+        </div>
+
 
         {% if evidence %}
 
-            <div style="margin-top: 25px;">
+            <div class="case-list">
 
-                <div class="case-list">
+                {% for item in evidence %}
 
-                    {% for item in evidence %}
+                    <div class="case-row">
 
-                        <div
-                            class="case-row"
-                            style="grid-template-columns: 70px 1fr 120px 120px;"
-                        >
+                        <div class="case-number">
+                            {{ "%02d"|format(loop.index) }}
+                        </div>
 
-                            <div class="case-number">
-                                {{ "%02d"|format(loop.index) }}
-                            </div>
 
-                            <div class="case-main">
+                        <div class="case-main">
 
-                                <span class="case-id">
-                                    {{ item.evidence_id }}
-                                </span>
+                            <span class="case-id">
+                                {{ item.evidence_id }}
+                            </span>
 
-                                <h3>
-                                    {{ item.filename }}
-                                </h3>
-
-                            </div>
-
-                            <div class="case-status">
-
-                                <span class="status-dot"></span>
-
-                                {{ item.integrity_status }}
-
-                            </div>
-
-                            <div class="case-risk">
-
-                                <span>
-                                    SHA-256
-                                </span>
-
-                                <strong
-                                    style="
-                                        font-size: 9px;
-                                        word-break: break-all;
-                                    "
-                                >
-                                    {{ item.sha256_hash[:16] }}...
-                                </strong>
-
-                            </div>
+                            <h3>
+                                {{ item.filename }}
+                            </h3>
 
                         </div>
 
-                    {% endfor %}
 
-                </div>
+                        <div class="case-status">
+
+                            <span class="status-dot"></span>
+
+                            {{ item.integrity_status }}
+
+                        </div>
+
+
+                        <div class="case-risk">
+
+                            <span>
+                                TYPE
+                            </span>
+
+                            <strong>
+                                {{ item.evidence_type }}
+                            </strong>
+
+                        </div>
+
+
+                        <div class="case-risk">
+
+                            <span>
+                                SIZE
+                            </span>
+
+                            <strong>
+                                {{ item.file_size }}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        style="
+                            background: white;
+                            padding: 12px 30px;
+                            border-bottom: 1px solid #e7e7e2;
+                            color: #aaa;
+                            font-size: 9px;
+                            letter-spacing: 0.5px;
+                        "
+                    >
+
+                        SHA-256:
+                        {{ item.sha256_hash }}
+
+                        &nbsp;&nbsp; | &nbsp;&nbsp;
+
+                        Uploaded:
+                        {{ item.uploaded_at }}
+
+                    </div>
+
+                {% endfor %}
 
             </div>
 
         {% else %}
 
-            <div
-                class="empty-state"
-                style="margin-top: 25px;"
-            >
+            <div class="empty-state">
 
                 <span class="empty-number">
-                    01
+                    00
                 </span>
 
                 <h3>
-                    No evidence uploaded
+                    No Evidence
                 </h3>
 
                 <p>
-                    Upload a ZIP evidence package to begin
-                    forensic analysis.
+                    No forensic evidence has been uploaded to this case yet.
                 </p>
 
             </div>
 
         {% endif %}
 
-    </section>
+    </div>
 
 
-    <!-- =====================================================
+    <!-- ==========================================
          RISK ASSESSMENT
-    ====================================================== -->
+    =========================================== -->
 
-    <section class="case-section">
+    <div class="case-section">
+
+        <span class="section-label">
+            RISK ASSESSMENT
+        </span>
 
         <div class="section-heading">
 
             <div>
 
-                <span class="section-label">
-                    02 / RISK
-                </span>
-
                 <h2>
-                    Risk Assessment
+                    Current Risk
                 </h2>
 
             </div>
 
         </div>
+
 
         <div class="risk-panel">
 
@@ -303,59 +383,248 @@
                 </span>
 
                 <span class="risk-score-max">
-                    / 100
+                    /100
                 </span>
 
             </div>
 
+
             <div class="risk-panel-info">
 
                 <h3>
-                    {{ risk_level }} Risk
+                    {{ risk_level }}
                 </h3>
 
-                {% if alerts %}
-
-                    <p>
-                        CyberTrace identified
-                        {{ alerts|length }}
-                        suspicious activity alert(s).
-                        The score is calculated from the
-                        severity of detected alerts and is
-                        intended to support investigator review.
-                    </p>
-
-                {% else %}
-
-                    <p>
-                        No suspicious activity alerts were
-                        generated by the current detection rules.
-                        This does not prove that no malicious
-                        activity occurred.
-                    </p>
-
-                {% endif %}
+                <p>
+                    The current risk score is calculated from
+                    suspicious activity alerts detected by the
+                    CyberTrace rule-based detection engine.
+                    This score is a heuristic indicator and
+                    should be validated by an investigator.
+                </p>
 
             </div>
 
         </div>
 
-    </section>
+    </div>
 
 
-    <!-- =====================================================
-         ALERTS
-    ====================================================== -->
+    <!-- ==========================================
+         CORRELATED ACTIVITY
+    =========================================== -->
 
-    <section class="case-section">
+    <div class="case-section">
+
+        <span class="section-label">
+            EVENT CORRELATION
+        </span>
+
 
         <div class="section-heading">
 
             <div>
 
-                <span class="section-label">
-                    03 / DETECTION
+                <h2>
+                    Correlated Activity
+                </h2>
+
+                <p class="case-description">
+                    Related events identified across multiple
+                    evidence sources.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        {% if correlations %}
+
+            {% for correlation in correlations %}
+
+                <!-- CORRELATION GROUP HEADER -->
+
+                <div
+                    style="
+                        background: white;
+                        border-top: 1px solid #ddd;
+                        border-bottom: 1px solid #ddd;
+                        padding: 25px 30px;
+                        display: grid;
+                        grid-template-columns: 70px 1fr 220px;
+                        align-items: center;
+                        gap: 20px;
+                    "
+                >
+
+                    <div class="case-number">
+                        {{ "%02d"|format(loop.index) }}
+                    </div>
+
+
+                    <div class="case-main">
+
+                        <span class="case-id">
+                            CORRELATION GROUP
+                        </span>
+
+                        <h3>
+                            {{ correlation.events|length }}
+                            Related Events
+                        </h3>
+
+                    </div>
+
+
+                    <div class="case-risk">
+
+                        <span>
+                            SOURCES
+                        </span>
+
+                        <strong>
+                            {{ correlation.evidence_types|join(", ") }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ==========================================
+                     CORRELATED EVENTS
+                     SAME STRUCTURE AS INVESTIGATION TIMELINE
+                =========================================== -->
+
+                <div class="timeline">
+
+                    {% for event in correlation.events %}
+
+                        <div class="timeline-item">
+
+                            <div class="timeline-time">
+                                {{ event.timestamp }}
+                            </div>
+
+
+                            <div class="timeline-content">
+
+                                <div class="event-type">
+                                    {{ event.event_type }}
+                                </div>
+
+
+                                <h3>
+                                    {{ event.description }}
+                                </h3>
+
+
+                                <p>
+
+                                    {% if event.username %}
+                                        User: {{ event.username }}
+                                    {% endif %}
+
+
+                                    {% if event.source_ip %}
+
+                                        {% if event.username %}
+                                            &nbsp; · &nbsp;
+                                        {% endif %}
+
+                                        Source:
+                                        {{ event.source_ip }}
+
+                                    {% endif %}
+
+
+                                    {% if event.destination_ip %}
+
+                                        &nbsp; · &nbsp;
+
+                                        Destination:
+                                        {{ event.destination_ip }}
+
+                                    {% endif %}
+
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+
+                <!-- CORRELATION TIME RANGE -->
+
+                <div
+                    style="
+                        background: white;
+                        border-bottom: 1px solid #ddd;
+                        padding: 15px 30px;
+                        color: #aaa;
+                        font-size: 9px;
+                        letter-spacing: 1px;
+                        text-align: right;
+                    "
+                >
+
+                    TIME RANGE:
+
+                    {{ correlation.start_time }}
+
+                    →
+
+                    {{ correlation.end_time }}
+
+                </div>
+
+
+                <div style="height: 50px;"></div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="empty-state">
+
+                <span class="empty-number">
+                    00
                 </span>
+
+                <h3>
+                    No Correlations
+                </h3>
+
+                <p>
+                    No cross-source event correlations were identified.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ==========================================
+         SUSPICIOUS ACTIVITY
+    =========================================== -->
+
+    <div class="case-section">
+
+        <span class="section-label">
+            DETECTION ENGINE
+        </span>
+
+
+        <div class="section-heading">
+
+            <div>
 
                 <h2>
                     Suspicious Activity
@@ -374,6 +643,7 @@
 
                     <div class="alert-card">
 
+
                         <div class="alert-severity">
 
                             <span class="severity-dot"></span>
@@ -381,6 +651,7 @@
                             {{ alert.severity }}
 
                         </div>
+
 
                         <div class="alert-content">
 
@@ -398,23 +669,21 @@
 
                                 </div>
 
+
                                 <span class="alert-time">
-
-                                    {% if alert.timestamp %}
-                                        {{ alert.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-
+                                    {{ alert.timestamp }}
                                 </span>
 
                             </div>
+
 
                             <p>
                                 {{ alert.description }}
                             </p>
 
+
                             <span class="alert-id">
+                                ALERT ID:
                                 {{ alert.alert_id }}
                             </span>
 
@@ -431,38 +700,38 @@
             <div class="empty-state">
 
                 <span class="empty-number">
-                    03
+                    00
                 </span>
 
                 <h3>
-                    No suspicious activity detected
+                    No Suspicious Activity
                 </h3>
 
                 <p>
-                    The configured detection rules did not
-                    identify any matching suspicious patterns.
+                    No suspicious activity alerts were detected.
                 </p>
 
             </div>
 
         {% endif %}
 
-    </section>
+    </div>
 
 
-    <!-- =====================================================
-         TIMELINE
-    ====================================================== -->
+    <!-- ==========================================
+         INVESTIGATION TIMELINE
+    =========================================== -->
 
-    <section class="case-section">
+    <div class="case-section">
+
+        <span class="section-label">
+            EVENT TIMELINE
+        </span>
+
 
         <div class="section-heading">
 
             <div>
-
-                <span class="section-label">
-                    04 / TIMELINE
-                </span>
 
                 <h2>
                     Investigation Timeline
@@ -482,24 +751,21 @@
                     <div class="timeline-item">
 
                         <div class="timeline-time">
-
-                            {% if event.timestamp %}
-                                {{ event.timestamp.strftime("%Y-%m-%d %H:%M:%S") }}
-                            {% else %}
-                                Unknown time
-                            {% endif %}
-
+                            {{ event.timestamp }}
                         </div>
+
 
                         <div class="timeline-content">
 
-                            <span class="event-type">
+                            <div class="event-type">
                                 {{ event.event_type }}
-                            </span>
+                            </div>
+
 
                             <h3>
                                 {{ event.description }}
                             </h3>
+
 
                             <p>
 
@@ -507,21 +773,26 @@
                                     User: {{ event.username }}
                                 {% endif %}
 
+
                                 {% if event.source_ip %}
+
                                     {% if event.username %}
-                                        ·
+                                        &nbsp; · &nbsp;
                                     {% endif %}
-                                    Source: {{ event.source_ip }}
+
+                                    Source:
+                                    {{ event.source_ip }}
+
                                 {% endif %}
+
 
                                 {% if event.destination_ip %}
-                                    · Destination:
-                                    {{ event.destination_ip }}
-                                {% endif %}
 
-                                {% if event.severity %}
-                                    · Severity:
-                                    {{ event.severity }}
+                                    &nbsp; · &nbsp;
+
+                                    Destination:
+                                    {{ event.destination_ip }}
+
                                 {% endif %}
 
                             </p>
@@ -539,82 +810,62 @@
             <div class="empty-state">
 
                 <span class="empty-number">
-                    04
+                    00
                 </span>
 
                 <h3>
-                    Timeline is empty
+                    No Events
                 </h3>
 
                 <p>
-                    Upload and process evidence to reconstruct
-                    the investigation timeline.
+                    No events have been stored for this case.
                 </p>
 
             </div>
 
         {% endif %}
 
-    </section>
+    </div>
 
 
-    <!-- =====================================================
+    <!-- ==========================================
          REPORT
-    ====================================================== -->
+    =========================================== -->
 
-    <section class="case-section">
+    <div class="case-section">
+
+        <span class="section-label">
+            INVESTIGATION REPORT
+        </span>
+
 
         <div class="section-heading">
 
             <div>
 
-                <span class="section-label">
-                    05 / REPORT
-                </span>
-
                 <h2>
-                    Investigation Report
+                    Generate Report
                 </h2>
+
+                <p class="case-description">
+                    Generate a PDF investigation report containing
+                    evidence integrity, alerts, correlations,
+                    risk assessment, and the complete timeline.
+                </p>
 
             </div>
 
+
             <a
                 href="{{ url_for('generate_report', case_id=case.case_id) }}"
-                class="primary-button"
+                class="outline-button"
             >
-                GENERATE PDF REPORT
+                GENERATE PDF
             </a>
 
         </div>
 
-        <div class="upload-card">
-
-            <div class="upload-info">
-
-                <div class="upload-icon">
-                    PDF
-                </div>
-
-                <div>
-
-                    <h3>
-                        Generate Case Report
-                    </h3>
-
-                    <p>
-                        Create a PDF containing case information,
-                        evidence integrity details, risk assessment,
-                        alerts, and the chronological investigation
-                        timeline.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
+    </div>
 
 </section>
 
