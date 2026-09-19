@@ -16,6 +16,7 @@ from config import (
     REPORT_FOLDER,
     SQLALCHEMY_DATABASE_URI,
     SQLALCHEMY_TRACK_MODIFICATIONS,
+    SECRET_KEY,
 )
 
 from database.database import db
@@ -71,44 +72,68 @@ from utils.evidence_utils import (
 )
 
 
+# ==========================================
+# APPLICATION
+# ==========================================
+
 app = Flask(__name__)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["REPORT_FOLDER"] = REPORT_FOLDER
-app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    SQLALCHEMY_DATABASE_URI
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = (
     SQLALCHEMY_TRACK_MODIFICATIONS
 )
 
-app.secret_key = "cybertrace-development-key"
+app.secret_key = SECRET_KEY
 
 db.init_app(app)
 
+
+# ==========================================
+# DATABASE INITIALIZATION
+# ==========================================
 
 with app.app_context():
     db.create_all()
 
 
+# ==========================================
+# HOME
+# ==========================================
+
 @app.route("/")
 def home():
-    return redirect(url_for("dashboard"))
+    return redirect(
+        url_for("dashboard")
+    )
 
+
+# ==========================================
+# DASHBOARD
+# ==========================================
 
 @app.route("/dashboard")
 def dashboard():
+
     cases = get_all_cases()
 
     open_cases = sum(
-        1 for case in cases
+        1
+        for case in cases
         if case.status == "Open"
     )
 
     closed_cases = sum(
-        1 for case in cases
+        1
+        for case in cases
         if case.status == "Closed"
     )
 
     total_events = Event.query.count()
+
     total_alerts = Alert.query.count()
 
     return render_template(
@@ -121,11 +146,20 @@ def dashboard():
     )
 
 
-@app.route("/cases/create", methods=["GET", "POST"])
+# ==========================================
+# CREATE CASE
+# ==========================================
+
+@app.route(
+    "/cases/create",
+    methods=["GET", "POST"]
+)
 def create_case_page():
 
     if request.method == "GET":
-        return render_template("create_case.html")
+        return render_template(
+            "create_case.html"
+        )
 
     case_name = request.form.get(
         "case_name",
@@ -138,13 +172,16 @@ def create_case_page():
     ).strip()
 
     if not case_name:
+
         flash(
             "Case name is required.",
             "error"
         )
 
         return redirect(
-            url_for("create_case_page")
+            url_for(
+                "create_case_page"
+            )
         )
 
     case = create_case(
@@ -165,12 +202,21 @@ def create_case_page():
     )
 
 
-@app.route("/cases/<case_id>")
+# ==========================================
+# CASE DETAILS
+# ==========================================
+
+@app.route(
+    "/cases/<case_id>"
+)
 def case_details(case_id):
 
-    case = get_case_by_id(case_id)
+    case = get_case_by_id(
+        case_id
+    )
 
     if case is None:
+
         flash(
             "Case not found.",
             "error"
@@ -180,18 +226,28 @@ def case_details(case_id):
             url_for("dashboard")
         )
 
-    evidence = get_case_evidence(case.id)
+    evidence = get_case_evidence(
+        case.id
+    )
 
     events = (
         Event.query
-        .filter_by(case_id=case.id)
-        .order_by(Event.timestamp.asc())
+        .filter_by(
+            case_id=case.id
+        )
+        .order_by(
+            Event.timestamp.asc()
+        )
         .all()
     )
 
-    alerts = get_case_alerts(case.id)
+    alerts = get_case_alerts(
+        case.id
+    )
 
-    correlations = correlate_events(events)
+    correlations = correlate_events(
+        events
+    )
 
     risk_level = get_risk_level(
         case.risk_score or 0
@@ -208,7 +264,13 @@ def case_details(case_id):
     )
 
 
-def detect_evidence_type(file_path):
+# ==========================================
+# EVIDENCE TYPE DETECTION
+# ==========================================
+
+def detect_evidence_type(
+    file_path
+):
 
     normalized_path = os.path.normpath(
         file_path
@@ -232,6 +294,7 @@ def detect_evidence_type(file_path):
         folder_name = part.lower()
 
         if folder_name in supported_types:
+
             return supported_types[
                 folder_name
             ]
@@ -239,16 +302,26 @@ def detect_evidence_type(file_path):
     return None
 
 
+# ==========================================
+# ANALYZE CASE
+# ==========================================
+
 def analyze_case(case):
 
     events = (
         Event.query
-        .filter_by(case_id=case.id)
-        .order_by(Event.timestamp.asc())
+        .filter_by(
+            case_id=case.id
+        )
+        .order_by(
+            Event.timestamp.asc()
+        )
         .all()
     )
 
-    delete_case_alerts(case.id)
+    delete_case_alerts(
+        case.id
+    )
 
     alert_data = detect_suspicious_activity(
         events
@@ -272,7 +345,8 @@ def analyze_case(case):
     risk_score = calculate_risk_score(
         [
             {
-                "severity": alert.severity
+                "severity": alert.severity,
+                "rule_id": alert.rule_id,
             }
             for alert in saved_alerts
         ]
@@ -289,13 +363,19 @@ def analyze_case(case):
     )
 
 
+# ==========================================
+# UPLOAD EVIDENCE
+# ==========================================
+
 @app.route(
     "/cases/<case_id>/upload",
     methods=["POST"]
 )
 def upload_evidence(case_id):
 
-    case = get_case_by_id(case_id)
+    case = get_case_by_id(
+        case_id
+    )
 
     if case is None:
 
@@ -342,7 +422,9 @@ def upload_evidence(case_id):
 
     filename = uploaded_file.filename
 
-    if not filename.lower().endswith(".zip"):
+    if not filename.lower().endswith(
+        ".zip"
+    ):
 
         flash(
             "Only ZIP evidence packages are supported.",
@@ -371,7 +453,9 @@ def upload_evidence(case_id):
         filename,
     )
 
-    uploaded_file.save(zip_path)
+    uploaded_file.save(
+        zip_path
+    )
 
     sha256_hash = calculate_sha256(
         zip_path
@@ -391,7 +475,9 @@ def upload_evidence(case_id):
         integrity_status="Verified",
     )
 
-    db.session.add(evidence)
+    db.session.add(
+        evidence
+    )
 
     db.session.commit()
 
@@ -522,12 +608,18 @@ def upload_evidence(case_id):
     )
 
 
+# ==========================================
+# GENERATE REPORT
+# ==========================================
+
 @app.route(
     "/cases/<case_id>/report"
 )
 def generate_report(case_id):
 
-    case = get_case_by_id(case_id)
+    case = get_case_by_id(
+        case_id
+    )
 
     if case is None:
 
@@ -546,8 +638,12 @@ def generate_report(case_id):
 
     events = (
         Event.query
-        .filter_by(case_id=case.id)
-        .order_by(Event.timestamp.asc())
+        .filter_by(
+            case_id=case.id
+        )
+        .order_by(
+            Event.timestamp.asc()
+        )
         .all()
     )
 
@@ -575,6 +671,11 @@ def generate_report(case_id):
     )
 
     try:
+
+        os.makedirs(
+            app.config["REPORT_FOLDER"],
+            exist_ok=True,
+        )
 
         generate_investigation_report(
             case=case,
@@ -619,7 +720,12 @@ def generate_report(case_id):
         )
 
 
+# ==========================================
+# LOCAL DEVELOPMENT
+# ==========================================
+
 if __name__ == "__main__":
+
     app.run(
         debug=True
     )
