@@ -1,4 +1,5 @@
 import os
+import shutil
 import uuid
 
 from flask import (
@@ -72,17 +73,11 @@ from utils.evidence_utils import (
 )
 
 
-# ==========================================
-# APPLICATION
-# ==========================================
-
 app = Flask(__name__)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["REPORT_FOLDER"] = REPORT_FOLDER
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    SQLALCHEMY_DATABASE_URI
-)
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = (
     SQLALCHEMY_TRACK_MODIFICATIONS
 )
@@ -92,17 +87,9 @@ app.secret_key = SECRET_KEY
 db.init_app(app)
 
 
-# ==========================================
-# DATABASE INITIALIZATION
-# ==========================================
-
 with app.app_context():
     db.create_all()
 
-
-# ==========================================
-# HOME
-# ==========================================
 
 @app.route("/")
 def home():
@@ -110,10 +97,6 @@ def home():
         url_for("dashboard")
     )
 
-
-# ==========================================
-# DASHBOARD
-# ==========================================
 
 @app.route("/dashboard")
 def dashboard():
@@ -133,7 +116,6 @@ def dashboard():
     )
 
     total_events = Event.query.count()
-
     total_alerts = Alert.query.count()
 
     return render_template(
@@ -146,10 +128,6 @@ def dashboard():
     )
 
 
-# ==========================================
-# CREATE CASE
-# ==========================================
-
 @app.route(
     "/cases/create",
     methods=["GET", "POST"]
@@ -157,6 +135,7 @@ def dashboard():
 def create_case_page():
 
     if request.method == "GET":
+
         return render_template(
             "create_case.html"
         )
@@ -179,9 +158,7 @@ def create_case_page():
         )
 
         return redirect(
-            url_for(
-                "create_case_page"
-            )
+            url_for("create_case_page")
         )
 
     case = create_case(
@@ -201,10 +178,6 @@ def create_case_page():
         )
     )
 
-
-# ==========================================
-# CASE DETAILS
-# ==========================================
 
 @app.route(
     "/cases/<case_id>"
@@ -232,12 +205,8 @@ def case_details(case_id):
 
     events = (
         Event.query
-        .filter_by(
-            case_id=case.id
-        )
-        .order_by(
-            Event.timestamp.asc()
-        )
+        .filter_by(case_id=case.id)
+        .order_by(Event.timestamp.asc())
         .all()
     )
 
@@ -264,13 +233,7 @@ def case_details(case_id):
     )
 
 
-# ==========================================
-# EVIDENCE TYPE DETECTION
-# ==========================================
-
-def detect_evidence_type(
-    file_path
-):
+def detect_evidence_type(file_path):
 
     normalized_path = os.path.normpath(
         file_path
@@ -302,20 +265,12 @@ def detect_evidence_type(
     return None
 
 
-# ==========================================
-# ANALYZE CASE
-# ==========================================
-
 def analyze_case(case):
 
     events = (
         Event.query
-        .filter_by(
-            case_id=case.id
-        )
-        .order_by(
-            Event.timestamp.asc()
-        )
+        .filter_by(case_id=case.id)
+        .order_by(Event.timestamp.asc())
         .all()
     )
 
@@ -362,10 +317,6 @@ def analyze_case(case):
         correlations,
     )
 
-
-# ==========================================
-# UPLOAD EVIDENCE
-# ==========================================
 
 @app.route(
     "/cases/<case_id>/upload",
@@ -422,9 +373,7 @@ def upload_evidence(case_id):
 
     filename = uploaded_file.filename
 
-    if not filename.lower().endswith(
-        ".zip"
-    ):
+    if not filename.lower().endswith(".zip"):
 
         flash(
             "Only ZIP evidence packages are supported.",
@@ -532,7 +481,9 @@ def upload_evidence(case_id):
             saved_alerts,
             risk_score,
             correlations,
-        ) = analyze_case(case)
+        ) = analyze_case(
+            case
+        )
 
         flash(
             (
@@ -608,9 +559,114 @@ def upload_evidence(case_id):
     )
 
 
-# ==========================================
-# GENERATE REPORT
-# ==========================================
+@app.route(
+    "/cases/<case_id>/delete",
+    methods=["POST"]
+)
+def delete_case(case_id):
+
+    case = get_case_by_id(
+        case_id
+    )
+
+    if case is None:
+
+        flash(
+            "Case not found.",
+            "error"
+        )
+
+        return redirect(
+            url_for("dashboard")
+        )
+
+    case_identifier = case.case_id
+
+    try:
+
+        # Delete alerts
+        Alert.query.filter_by(
+            case_id=case.id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # Delete events
+        Event.query.filter_by(
+            case_id=case.id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # Delete evidence records
+        Evidence.query.filter_by(
+            case_id=case.id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # Delete the case itself
+        db.session.delete(
+            case
+        )
+
+        db.session.commit()
+
+        # Delete uploaded evidence directory
+        case_upload_folder = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            case_identifier,
+        )
+
+        if os.path.exists(
+            case_upload_folder
+        ):
+
+            shutil.rmtree(
+                case_upload_folder
+            )
+
+        # Delete generated report
+        report_filename = (
+            f"{case_identifier}_investigation_report.pdf"
+        )
+
+        report_path = os.path.join(
+            app.config["REPORT_FOLDER"],
+            report_filename,
+        )
+
+        if os.path.exists(
+            report_path
+        ):
+
+            os.remove(
+                report_path
+            )
+
+        flash(
+            f"Case {case_identifier} was deleted successfully.",
+            "success"
+        )
+
+    except Exception as delete_error:
+
+        db.session.rollback()
+
+        print(
+            "Case deletion error:",
+            delete_error,
+        )
+
+        flash(
+            "Failed to delete the case.",
+            "error"
+        )
+
+    return redirect(
+        url_for("dashboard")
+    )
+
 
 @app.route(
     "/cases/<case_id>/report"
@@ -638,12 +694,8 @@ def generate_report(case_id):
 
     events = (
         Event.query
-        .filter_by(
-            case_id=case.id
-        )
-        .order_by(
-            Event.timestamp.asc()
-        )
+        .filter_by(case_id=case.id)
+        .order_by(Event.timestamp.asc())
         .all()
     )
 
@@ -665,17 +717,17 @@ def generate_report(case_id):
         f"{case.case_id}_investigation_report.pdf"
     )
 
+    os.makedirs(
+        app.config["REPORT_FOLDER"],
+        exist_ok=True,
+    )
+
     report_path = os.path.join(
         app.config["REPORT_FOLDER"],
         report_filename,
     )
 
     try:
-
-        os.makedirs(
-            app.config["REPORT_FOLDER"],
-            exist_ok=True,
-        )
 
         generate_investigation_report(
             case=case,
@@ -719,10 +771,6 @@ def generate_report(case_id):
             )
         )
 
-
-# ==========================================
-# LOCAL DEVELOPMENT
-# ==========================================
 
 if __name__ == "__main__":
 

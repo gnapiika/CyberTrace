@@ -6,57 +6,76 @@
 
 {% block content %}
 
-<section class="dashboard-section">
+<div class="case-page">
 
-    <!-- ==========================================
-         CASE HEADER
-    =========================================== -->
-
-    <div class="section-heading">
+    <!-- CASE HEADER -->
+    <section class="case-header">
 
         <div>
 
-            <span class="section-label">
+            <p class="eyebrow">
                 DIGITAL FORENSICS CASE
-            </span>
+            </p>
 
-            <h2>
+            <h1>
                 {{ case.case_name }}
-            </h2>
+            </h1>
+
+            <p class="case-id">
+                Case ID: {{ case.case_id }}
+            </p>
+
+            {% if case.description %}
 
             <p class="case-description">
-                Case ID: {{ case.case_id }}
-
-                {% if case.description %}
-                    <br>
-                    {{ case.description }}
-                {% endif %}
+                {{ case.description }}
             </p>
+
+            {% endif %}
 
         </div>
 
-        <div class="case-header-meta">
 
-            <span class="case-status-large">
-                STATUS: {{ case.status }}
-            </span>
+        <div class="case-header-actions">
 
             <a
                 href="{{ url_for('dashboard') }}"
-                class="outline-button"
+                class="btn btn-secondary"
             >
-                ← DASHBOARD
+                ← Dashboard
             </a>
+
+            <a
+                href="{{ url_for('generate_report', case_id=case.case_id) }}"
+                class="btn btn-primary"
+            >
+                Generate Report
+            </a>
+
+            <form
+                method="POST"
+                action="{{ url_for('delete_case', case_id=case.case_id) }}"
+                onsubmit="return confirm(
+                    'Are you sure you want to delete this investigation? This will permanently delete the case, evidence records, events, alerts, uploaded evidence files, and generated report.'
+                );"
+                style="display: inline;"
+            >
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Delete Case
+                </button>
+
+            </form>
 
         </div>
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         FLASH MESSAGES
-    =========================================== -->
-
+    <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
 
         {% if messages %}
@@ -65,7 +84,7 @@
 
                 {% for category, message in messages %}
 
-                    <div class="flash {{ category }}">
+                    <div class="flash-message {{ category }}">
                         {{ message }}
                     </div>
 
@@ -78,83 +97,77 @@
     {% endwith %}
 
 
-    <!-- ==========================================
-         STATISTICS
-    =========================================== -->
-
-    <div class="stats-grid">
+    <!-- STATISTICS -->
+    <section class="stats-grid">
 
         <div class="stat-card">
 
-            <span>
-                EVIDENCE
-            </span>
+            <div class="stat-label">
+                Evidence
+            </div>
 
-            <strong>
+            <div class="stat-value">
                 {{ evidence|length }}
-            </strong>
+            </div>
 
         </div>
 
 
         <div class="stat-card">
 
-            <span>
-                EVENTS
-            </span>
+            <div class="stat-label">
+                Events
+            </div>
 
-            <strong>
+            <div class="stat-value">
                 {{ events|length }}
-            </strong>
+            </div>
 
         </div>
 
 
         <div class="stat-card">
 
-            <span>
-                ALERTS
-            </span>
+            <div class="stat-label">
+                Alerts
+            </div>
 
-            <strong>
+            <div class="stat-value">
                 {{ alerts|length }}
-            </strong>
+            </div>
 
         </div>
 
 
-        <div class="stat-card risk-stat-card">
+        <div class="stat-card">
 
-            <span>
-                RISK SCORE
-            </span>
+            <div class="stat-label">
+                Risk Score
+            </div>
 
-            <strong>
+            <div class="stat-value">
                 {{ case.risk_score or 0 }}/100
-            </strong>
+            </div>
 
-            <small class="risk-label">
+            <div class="stat-subtitle">
                 {{ risk_level }}
-            </small>
+            </div>
 
         </div>
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         EVIDENCE MANAGEMENT
-    =========================================== -->
+    <!-- EVIDENCE MANAGEMENT -->
+    <section class="dashboard-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            EVIDENCE MANAGEMENT
-        </span>
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    EVIDENCE MANAGEMENT
+                </p>
 
                 <h2>
                     Upload Evidence
@@ -165,71 +178,56 @@
         </div>
 
 
-        <div class="upload-card">
+        <form
+            method="POST"
+            action="{{ url_for('upload_evidence', case_id=case.case_id) }}"
+            enctype="multipart/form-data"
+            class="evidence-upload-form"
+        >
 
-            <div class="upload-info">
+            <div class="form-group">
 
-                <div class="upload-icon">
-                    +
-                </div>
-
-                <div>
-
-                    <h3>
-                        Evidence ZIP Package
-                    </h3>
-
-                    <p>
-                        Upload a ZIP package containing
-                        CSV, LOG, JSON, or TXT forensic evidence.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <form
-                method="POST"
-                action="{{ url_for('upload_evidence', case_id=case.case_id) }}"
-                enctype="multipart/form-data"
-                class="upload-form"
-            >
+                <label for="evidence_file">
+                    Evidence ZIP Package
+                </label>
 
                 <input
                     type="file"
+                    id="evidence_file"
                     name="evidence_file"
                     accept=".zip"
                     required
                 >
 
-                <button
-                    type="submit"
-                    class="primary-button"
-                >
-                    UPLOAD & ANALYZE
-                </button>
+                <small>
+                    Upload a ZIP containing CSV, LOG, JSON, or TXT forensic evidence.
+                </small>
 
-            </form>
-
-        </div>
-
-    </div>
+            </div>
 
 
-    <!-- ==========================================
-         EVIDENCE LIST
-    =========================================== -->
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Upload & Analyze Evidence
+            </button>
 
-    <div class="case-section">
+        </form>
 
-        <span class="section-label">
-            COLLECTED DATA
-        </span>
+    </section>
 
-        <div class="section-heading">
+
+    <!-- EVIDENCE LIST -->
+    <section class="dashboard-section">
+
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    COLLECTED DATA
+                </p>
 
                 <h2>
                     Evidence
@@ -242,85 +240,52 @@
 
         {% if evidence %}
 
-            <div class="case-list">
+            <div class="evidence-list">
 
                 {% for item in evidence %}
 
-                    <div class="case-row">
+                    <div class="evidence-card">
 
-                        <div class="case-number">
-                            {{ "%02d"|format(loop.index) }}
-                        </div>
-
-
-                        <div class="case-main">
-
-                            <span class="case-id">
-                                {{ item.evidence_id }}
-                            </span>
+                        <div class="evidence-main">
 
                             <h3>
                                 {{ item.filename }}
                             </h3>
 
-                        </div>
-
-
-                        <div class="case-status">
-
-                            <span class="status-dot"></span>
-
-                            {{ item.integrity_status }}
-
-                        </div>
-
-
-                        <div class="case-risk">
-
-                            <span>
-                                TYPE
-                            </span>
-
-                            <strong>
+                            <p>
+                                Type:
                                 {{ item.evidence_type }}
-                            </strong>
+                            </p>
+
+                            <p>
+                                Size:
+                                {{ item.file_size }} bytes
+                            </p>
+
+                            <p>
+                                Uploaded:
+                                {{ item.uploaded_at }}
+                            </p>
 
                         </div>
 
 
-                        <div class="case-risk">
+                        <div class="evidence-integrity">
 
-                            <span>
-                                SIZE
+                            <span class="integrity-label">
+                                Integrity
                             </span>
 
-                            <strong>
-                                {{ item.file_size }}
-                            </strong>
+                            <span class="integrity-status">
+                                {{ item.integrity_status }}
+                            </span>
+
+                            <p class="hash-value">
+                                SHA-256:
+                                {{ item.sha256_hash[:16] }}...
+                            </p>
 
                         </div>
-
-                    </div>
-
-
-                    <div
-                        style="
-                            background: white;
-                            padding: 12px 30px;
-                            border-bottom: 1px solid #e7e7e2;
-                            color: #aaa;
-                            font-size: 9px;
-                            letter-spacing: 0.5px;
-                        "
-                    >
-
-                        SHA-256:
-                        {{ item.sha256_hash }}
-
-                        &nbsp;&nbsp; | &nbsp;&nbsp;
-
-                        Uploaded:
-                        {{ item.uploaded_at }}
 
                     </div>
 
@@ -331,39 +296,24 @@
         {% else %}
 
             <div class="empty-state">
-
-                <span class="empty-number">
-                    00
-                </span>
-
-                <h3>
-                    No Evidence
-                </h3>
-
-                <p>
-                    No forensic evidence has been uploaded to this case yet.
-                </p>
-
+                No evidence has been uploaded yet.
             </div>
 
         {% endif %}
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         RISK ASSESSMENT
-    =========================================== -->
+    <!-- RISK ASSESSMENT -->
+    <section class="dashboard-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            RISK ASSESSMENT
-        </span>
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    RISK ASSESSMENT
+                </p>
 
                 <h2>
                     Current Risk
@@ -374,64 +324,56 @@
         </div>
 
 
-        <div class="risk-panel">
+        <div class="risk-card">
 
-            <div class="risk-score-large">
+            <div class="risk-score">
 
-                <span class="risk-score-number">
+                <span class="risk-number">
                     {{ case.risk_score or 0 }}
                 </span>
 
-                <span class="risk-score-max">
-                    /100
+                <span class="risk-max">
+                    / 100
                 </span>
 
             </div>
 
 
-            <div class="risk-panel-info">
+            <div class="risk-information">
 
                 <h3>
                     {{ risk_level }}
                 </h3>
 
                 <p>
-                    The current risk score is calculated from
-                    suspicious activity alerts detected by the
-                    CyberTrace rule-based detection engine.
-                    This score is a heuristic indicator and
-                    should be validated by an investigator.
+                    Risk score is calculated from detected suspicious activity alerts.
+                    The score is heuristic and should be validated by an investigator.
                 </p>
 
             </div>
 
         </div>
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         CORRELATED ACTIVITY
-    =========================================== -->
+    <!-- CORRELATED ACTIVITY -->
+    <section class="dashboard-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            EVENT CORRELATION
-        </span>
-
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    EVENT CORRELATION
+                </p>
 
                 <h2>
                     Correlated Activity
                 </h2>
 
-                <p class="case-description">
-                    Related events identified across multiple
-                    evidence sources.
+                <p>
+                    Related events identified across multiple evidence sources.
                 </p>
 
             </div>
@@ -441,190 +383,127 @@
 
         {% if correlations %}
 
-            {% for correlation in correlations %}
+            <div class="correlation-list">
 
-                <!-- CORRELATION GROUP HEADER -->
+                {% for correlation in correlations %}
 
-                <div
-                    style="
-                        background: white;
-                        border-top: 1px solid #ddd;
-                        border-bottom: 1px solid #ddd;
-                        padding: 25px 30px;
-                        display: grid;
-                        grid-template-columns: 70px 1fr 220px;
-                        align-items: center;
-                        gap: 20px;
-                    "
-                >
+                    <div class="correlation-card">
 
-                    <div class="case-number">
-                        {{ "%02d"|format(loop.index) }}
-                    </div>
+                        <div class="correlation-header">
 
+                            <div>
 
-                    <div class="case-main">
+                                <span class="correlation-number">
+                                    Correlation {{ loop.index }}
+                                </span>
 
-                        <span class="case-id">
-                            CORRELATION GROUP
-                        </span>
+                                <h3>
+                                    Related Investigation Activity
+                                </h3>
 
-                        <h3>
-                            {{ correlation.events|length }}
-                            Related Events
-                        </h3>
+                            </div>
 
-                    </div>
+                            <span class="correlation-count">
+                                {{ correlation.events|length }} events
+                            </span>
+
+                        </div>
 
 
-                    <div class="case-risk">
+                        <div class="correlation-meta">
 
-                        <span>
-                            SOURCES
-                        </span>
+                            <div>
 
-                        <strong>
-                            {{ correlation.evidence_types|join(", ") }}
-                        </strong>
+                                <strong>
+                                    Sources
+                                </strong>
 
-                    </div>
+                                <span>
+                                    {{ correlation.evidence_types|join(", ") }}
+                                </span>
 
-                </div>
-
-
-                <!-- ==========================================
-                     CORRELATED EVENTS
-                     SAME STRUCTURE AS INVESTIGATION TIMELINE
-                =========================================== -->
-
-                <div class="timeline">
-
-                    {% for event in correlation.events %}
-
-                        <div class="timeline-item">
-
-                            <div class="timeline-time">
-                                {{ event.timestamp }}
                             </div>
 
 
-                            <div class="timeline-content">
+                            <div>
 
-                                <div class="event-type">
-                                    {{ event.event_type }}
-                                </div>
+                                <strong>
+                                    Start
+                                </strong>
 
+                                <span>
+                                    {{ correlation.start_time }}
+                                </span>
 
-                                <h3>
-                                    {{ event.description }}
-                                </h3>
-
-
-                                <p>
-
-                                    {% if event.username %}
-                                        User: {{ event.username }}
-                                    {% endif %}
+                            </div>
 
 
-                                    {% if event.source_ip %}
+                            <div>
 
-                                        {% if event.username %}
-                                            &nbsp; · &nbsp;
-                                        {% endif %}
+                                <strong>
+                                    End
+                                </strong>
 
-                                        Source:
-                                        {{ event.source_ip }}
-
-                                    {% endif %}
-
-
-                                    {% if event.destination_ip %}
-
-                                        &nbsp; · &nbsp;
-
-                                        Destination:
-                                        {{ event.destination_ip }}
-
-                                    {% endif %}
-
-                                </p>
+                                <span>
+                                    {{ correlation.end_time }}
+                                </span>
 
                             </div>
 
                         </div>
 
-                    {% endfor %}
 
-                </div>
+                        <div class="correlation-events">
 
+                            {% for event in correlation.events %}
 
-                <!-- CORRELATION TIME RANGE -->
+                                <div class="correlation-event">
 
-                <div
-                    style="
-                        background: white;
-                        border-bottom: 1px solid #ddd;
-                        padding: 15px 30px;
-                        color: #aaa;
-                        font-size: 9px;
-                        letter-spacing: 1px;
-                        text-align: right;
-                    "
-                >
+                                    <div class="correlation-event-time">
+                                        {{ event.timestamp }}
+                                    </div>
 
-                    TIME RANGE:
+                                    <div class="correlation-event-type">
+                                        {{ event.event_type }}
+                                    </div>
 
-                    {{ correlation.start_time }}
+                                    <div class="correlation-event-description">
+                                        {{ event.description }}
+                                    </div>
 
-                    →
+                                </div>
 
-                    {{ correlation.end_time }}
+                            {% endfor %}
 
-                </div>
+                        </div>
 
+                    </div>
 
-                <div style="height: 50px;"></div>
+                {% endfor %}
 
-            {% endfor %}
+            </div>
 
         {% else %}
 
             <div class="empty-state">
-
-                <span class="empty-number">
-                    00
-                </span>
-
-                <h3>
-                    No Correlations
-                </h3>
-
-                <p>
-                    No cross-source event correlations were identified.
-                </p>
-
+                No cross-source event correlations were identified.
             </div>
 
         {% endif %}
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         SUSPICIOUS ACTIVITY
-    =========================================== -->
+    <!-- ALERTS -->
+    <section class="dashboard-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            DETECTION ENGINE
-        </span>
-
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    DETECTION ENGINE
+                </p>
 
                 <h2>
                     Suspicious Activity
@@ -643,48 +522,41 @@
 
                     <div class="alert-card">
 
+                        <div class="alert-header">
 
-                        <div class="alert-severity">
+                            <div>
 
-                            <span class="severity-dot"></span>
+                                <span class="alert-rule">
+                                    {{ alert.rule_id }}
+                                </span>
 
-                            {{ alert.severity }}
+                                <h3>
+                                    {{ alert.alert_name }}
+                                </h3>
+
+                            </div>
+
+                            <span class="alert-severity {{ alert.severity|lower }}">
+                                {{ alert.severity }}
+                            </span>
 
                         </div>
 
 
-                        <div class="alert-content">
-
-                            <div class="alert-header">
-
-                                <div>
-
-                                    <span class="alert-rule">
-                                        {{ alert.rule_id }}
-                                    </span>
-
-                                    <h3>
-                                        {{ alert.alert_name }}
-                                    </h3>
-
-                                </div>
+                        <p class="alert-description">
+                            {{ alert.description }}
+                        </p>
 
 
-                                <span class="alert-time">
-                                    {{ alert.timestamp }}
-                                </span>
+                        <div class="alert-meta">
 
-                            </div>
-
-
-                            <p>
-                                {{ alert.description }}
-                            </p>
-
-
-                            <span class="alert-id">
-                                ALERT ID:
+                            <span>
+                                Alert ID:
                                 {{ alert.alert_id }}
+                            </span>
+
+                            <span>
+                                {{ alert.timestamp }}
                             </span>
 
                         </div>
@@ -698,40 +570,24 @@
         {% else %}
 
             <div class="empty-state">
-
-                <span class="empty-number">
-                    00
-                </span>
-
-                <h3>
-                    No Suspicious Activity
-                </h3>
-
-                <p>
-                    No suspicious activity alerts were detected.
-                </p>
-
+                No suspicious activity alerts detected.
             </div>
 
         {% endif %}
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         INVESTIGATION TIMELINE
-    =========================================== -->
+    <!-- TIMELINE -->
+    <section class="dashboard-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            EVENT TIMELINE
-        </span>
-
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
+
+                <p class="eyebrow">
+                    EVENT TIMELINE
+                </p>
 
                 <h2>
                     Investigation Timeline
@@ -750,52 +606,45 @@
 
                     <div class="timeline-item">
 
-                        <div class="timeline-time">
-                            {{ event.timestamp }}
-                        </div>
-
+                        <div class="timeline-marker"></div>
 
                         <div class="timeline-content">
 
-                            <div class="event-type">
+                            <div class="timeline-time">
+                                {{ event.timestamp }}
+                            </div>
+
+                            <div class="timeline-type">
                                 {{ event.event_type }}
                             </div>
 
-
-                            <h3>
+                            <div class="timeline-description">
                                 {{ event.description }}
-                            </h3>
+                            </div>
 
+                            {% if event.username %}
 
-                            <p>
-
-                                {% if event.username %}
+                                <div class="timeline-detail">
                                     User: {{ event.username }}
-                                {% endif %}
+                                </div>
 
+                            {% endif %}
 
-                                {% if event.source_ip %}
+                            {% if event.source_ip %}
 
-                                    {% if event.username %}
-                                        &nbsp; · &nbsp;
-                                    {% endif %}
+                                <div class="timeline-detail">
+                                    Source IP: {{ event.source_ip }}
+                                </div>
 
-                                    Source:
-                                    {{ event.source_ip }}
+                            {% endif %}
 
-                                {% endif %}
+                            {% if event.destination_ip %}
 
+                                <div class="timeline-detail">
+                                    Destination IP: {{ event.destination_ip }}
+                                </div>
 
-                                {% if event.destination_ip %}
-
-                                    &nbsp; · &nbsp;
-
-                                    Destination:
-                                    {{ event.destination_ip }}
-
-                                {% endif %}
-
-                            </p>
+                            {% endif %}
 
                         </div>
 
@@ -808,65 +657,48 @@
         {% else %}
 
             <div class="empty-state">
-
-                <span class="empty-number">
-                    00
-                </span>
-
-                <h3>
-                    No Events
-                </h3>
-
-                <p>
-                    No events have been stored for this case.
-                </p>
-
+                No events have been stored for this case.
             </div>
 
         {% endif %}
 
-    </div>
+    </section>
 
 
-    <!-- ==========================================
-         REPORT
-    =========================================== -->
+    <!-- REPORT -->
+    <section class="dashboard-section report-section">
 
-    <div class="case-section">
-
-        <span class="section-label">
-            INVESTIGATION REPORT
-        </span>
-
-
-        <div class="section-heading">
+        <div class="section-header">
 
             <div>
 
+                <p class="eyebrow">
+                    INVESTIGATION REPORT
+                </p>
+
                 <h2>
-                    Generate Report
+                    Generate PDF Report
                 </h2>
 
-                <p class="case-description">
-                    Generate a PDF investigation report containing
-                    evidence integrity, alerts, correlations,
-                    risk assessment, and the complete timeline.
+                <p>
+                    Generate a complete investigation report containing
+                    evidence integrity, alerts, correlations, risk assessment,
+                    and the event timeline.
                 </p>
 
             </div>
 
-
             <a
                 href="{{ url_for('generate_report', case_id=case.case_id) }}"
-                class="outline-button"
+                class="btn btn-primary"
             >
-                GENERATE PDF
+                Generate PDF
             </a>
 
         </div>
 
-    </div>
+    </section>
 
-</section>
+</div>
 
 {% endblock %}
