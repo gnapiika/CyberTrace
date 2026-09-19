@@ -1,6 +1,6 @@
 # CyberTrace
 
-### Digital Forensics Investigation Platform
+### Digital Forensics Investigation Platform & Incident Analysis Platform
 
 CyberTrace is a digital forensics investigation platform that analyzes forensic evidence, reconstructs chronological activity, correlates events across multiple evidence sources, and identifies potentially suspicious behavior using deterministic detection rules.
 
