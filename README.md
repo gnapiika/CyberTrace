@@ -56,3 +56,29 @@ Chronological Timeline
 Investigation Dashboard
        ↓
 PDF Investigation Report
+## Screenshots
+
+### CyberTrace Homepage
+
+![CyberTrace Homepage](screenshots/homepage.png)
+
+### Investigation Dashboard
+
+![Investigation Dashboard](screenshots/dashboard.png)
+
+### Case Details
+
+![Case Details](screenshots/case-details.png)
+
+### Suspicious Activity Alerts
+
+![Alerts](screenshots/alerts.png)
+
+### Event Correlation
+
+![Correlation](screenshots/correlation.png)
+
+### Investigation Timeline
+
+![Timeline](screenshots/timeline.png)
+Add CyberTrace screenshots to README
