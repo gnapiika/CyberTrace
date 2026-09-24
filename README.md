@@ -1,58 +1,37 @@
-# CyberTrace
+**## Screenshots
 
-### Digital Forensics Investigation Platform & Incident Analysis Platform
+### CyberTrace Homepage
 
-CyberTrace is a digital forensics investigation platform that analyzes forensic evidence, reconstructs chronological activity, correlates events across multiple evidence sources, and identifies potentially suspicious behavior using deterministic detection rules.
+The CyberTrace landing page provides an overview of the digital forensics investigation workflow.
 
-**Live Demo:** https://cybertrace-forensics.up.railway.app
+![CyberTrace Homepage](screenshots/homepage.png)
 
----
+### Investigation Dashboard
 
-## Overview
+The investigation dashboard provides an overview of active cases, events, alerts, and risk scores.
 
-Digital investigations often involve evidence collected from multiple sources such as authentication logs, browser activity, file activity, USB devices, network connections, and process execution.
+![Investigation Dashboard](screenshots/dashboard.png)
 
-CyberTrace brings these sources together into a single investigation workflow.
+### Case Investigation
 
-The platform transforms raw forensic evidence into:
+Each investigation provides evidence information, event counts, alerts, and a calculated heuristic risk score.
 
-- Normalized forensic events
-- Chronological investigation timelines
-- Suspicious activity alerts
-- Cross-source event correlations
-- Heuristic risk scores
-- Investigation summaries
-- PDF investigation reports
+![Case Investigation](screenshots/case-details.png)
 
-The goal is to help investigators move from raw evidence to a coherent reconstruction of what happened.
+### Event Correlation
 
----
+CyberTrace correlates related events across multiple evidence sources to help reconstruct activity.
 
-## Investigation Workflow
+![Event Correlation](screenshots/correlation.png)
 
-```text
-Forensic Evidence
-       ↓
-SHA-256 Integrity Verification
-       ↓
-Evidence Extraction
-       ↓
-Evidence Source Identification
-       ↓
-Specialized Parsers
-       ↓
-Event Normalization
-       ↓
-SQLite / PostgreSQL Storage
-       ↓
-Detection Engine
-       ↓
-Correlation Engine
-       ↓
-Risk Scoring
-       ↓
-Chronological Timeline
-       ↓
-Investigation Dashboard
-       ↓
-PDF Investigation Report
+### Suspicious Activity Detection
+
+The detection engine identifies potentially suspicious patterns and presents them as investigation alerts with severity and explanations.
+
+![Suspicious Activity](screenshots/alerts.png)
+
+### Investigation Timeline
+
+Events from different evidence sources are reconstructed chronologically to provide a clear view of the investigation.
+
+![Investigation Timeline](screenshots/timeline.png)**
