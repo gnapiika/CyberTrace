@@ -1,37 +1,58 @@
-**## Screenshots
+# CyberTrace
 
-### CyberTrace Homepage
+### Digital Forensics Investigation Platform & Incident Analysis Platform
 
-The CyberTrace landing page provides an overview of the digital forensics investigation workflow.
+CyberTrace is a digital forensics investigation platform that analyzes forensic evidence, reconstructs chronological activity, correlates events across multiple evidence sources, and identifies potentially suspicious behavior using deterministic detection rules.
 
-![CyberTrace Homepage](screenshots/homepage.png)
+**Live Demo:** https://cybertrace-forensics.up.railway.app
 
-### Investigation Dashboard
+---
 
-The investigation dashboard provides an overview of active cases, events, alerts, and risk scores.
+## Overview
 
-![Investigation Dashboard](screenshots/dashboard.png)
+Digital investigations often involve evidence collected from multiple sources such as authentication logs, browser activity, file activity, USB devices, network connections, and process execution.
 
-### Case Investigation
+CyberTrace brings these sources together into a single investigation workflow.
 
-Each investigation provides evidence information, event counts, alerts, and a calculated heuristic risk score.
+The platform transforms raw forensic evidence into:
 
-![Case Investigation](screenshots/case-details.png)
+- Normalized forensic events
+- Chronological investigation timelines
+- Suspicious activity alerts
+- Cross-source event correlations
+- Heuristic risk scores
+- Investigation summaries
+- PDF investigation reports
 
-### Event Correlation
+The goal is to help investigators move from raw evidence to a coherent reconstruction of what happened.
 
-CyberTrace correlates related events across multiple evidence sources to help reconstruct activity.
+---
 
-![Event Correlation](screenshots/correlation.png)
+## Investigation Workflow
 
-### Suspicious Activity Detection
-
-The detection engine identifies potentially suspicious patterns and presents them as investigation alerts with severity and explanations.
-
-![Suspicious Activity](screenshots/alerts.png)
-
-### Investigation Timeline
-
-Events from different evidence sources are reconstructed chronologically to provide a clear view of the investigation.
-
-![Investigation Timeline](screenshots/timeline.png)**
+```text
+Forensic Evidence
+       ↓
+SHA-256 Integrity Verification
+       ↓
+Evidence Extraction
+       ↓
+Evidence Source Identification
+       ↓
+Specialized Parsers
+       ↓
+Event Normalization
+       ↓
+SQLite / PostgreSQL Storage
+       ↓
+Detection Engine
+       ↓
+Correlation Engine
+       ↓
+Risk Scoring
+       ↓
+Chronological Timeline
+       ↓
+Investigation Dashboard
+       ↓
+PDF Investigation Report
